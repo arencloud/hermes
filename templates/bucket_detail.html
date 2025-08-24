@@ -1,0 +1,244 @@
+{{define "content"}}
+<div class="main-content">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">Bucket Details</h1>
+            <p class="text-muted">Bucket: <strong>{{.Bucket.Name}}</strong></p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="/buckets/{{.Bucket.ID}}/upload" class="btn btn-success">
+                <i class="bi bi-upload"></i> Upload Files
+            </a>
+            <a href="/buckets" class="btn btn-outline-primary">
+                <i class="bi bi-arrow-left"></i> Back to Buckets
+            </a>
+        </div>
+    </div>
+
+    <!-- Bucket Information -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-info-circle"></i> Bucket Information</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Name:</strong> {{.Bucket.Name}}</p>
+                    <p><strong>Provider:</strong> 
+                        <span class="badge bg-{{if eq .Bucket.Provider "aws"}}primary{{else if eq .Bucket.Provider "minio"}}success{{else}}secondary{{end}}">
+                            {{.Bucket.Provider}}
+                        </span>
+                    </p>
+                    <p><strong>Status:</strong> 
+                        <span class="badge bg-{{if eq .Bucket.Status "active"}}success{{else}}secondary{{end}}">
+                            {{.Bucket.Status}}
+                        </span>
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    {{if .Bucket.Region}}
+                    <p><strong>Region:</strong> {{.Bucket.Region}}</p>
+                    {{end}}
+                    {{if .Bucket.Endpoint}}
+                    <p><strong>Endpoint:</strong> <code>{{.Bucket.Endpoint}}</code></p>
+                    {{end}}
+                    <p><strong>Created:</strong> {{.Bucket.CreatedAt.Format "Jan 02, 2006 15:04:05"}}</p>
+                </div>
+            </div>
+            
+            <div class="mt-3">
+                <p><strong>Your Role:</strong> 
+                    <span class="badge bg-{{if eq .UserRole "creator"}}danger{{else if eq .UserRole "reader"}}warning{{else}}info{{end}}">
+                        {{.UserRole}}
+                    </span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bucket Objects -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-files"></i> Objects</h5>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-primary" onclick="refreshObjects()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+                <button class="btn btn-sm btn-outline-success" onclick="downloadAll()">
+                    <i class="bi bi-download"></i> Download All
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            {{if .Objects}}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>
+                                <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                            </th>
+                            <th>Name</th>
+                            <th>Size</th>
+                            <th>Last Modified</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .Objects}}
+                        <tr>
+                            <td>
+                                <input type="checkbox" class="object-checkbox" value="{{.Key}}">
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-{{if .IsDir}}folder{{else}}file-earmark{{end}} text-{{if .IsDir}}warning{{else}}primary{{end}} me-2"></i>
+                                    <span>{{.Key}}</span>
+                                </div>
+                            </td>
+                            <td>
+                                {{if .IsDir}}
+                                    <span class="text-muted">-</span>
+                                {{else}}
+                                    {{formatBytes .Size}}
+                                {{end}}
+                            </td>
+                            <td>{{.LastModified.Format "Jan 02, 2006 15:04:05"}}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    {{if not .IsDir}}
+                                    <button class="btn btn-outline-primary btn-sm" onclick="downloadObject('{{.Key}}')" title="Download">
+                                        <i class="bi bi-download"></i>
+                                    </button>
+                                    {{end}}
+                                    {{if or (eq $.UserRole "creator") (eq $.UserRole "admin")}}
+                                    <button class="btn btn-outline-danger btn-sm" onclick="confirmDelete('Are you sure you want to delete \"{{.Key}}\"?', () => deleteObject('{{.Key}}'))" title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    {{end}}
+                                </div>
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+            {{else}}
+            <div class="text-center py-5">
+                <i class="bi bi-folder text-muted" style="font-size: 4rem;"></i>
+                <h5 class="text-muted mt-3">No objects found</h5>
+                <p class="text-muted">This bucket is empty. Upload some files to get started.</p>
+                <a href="/buckets/{{.Bucket.ID}}/upload" class="btn btn-primary">
+                    <i class="bi bi-upload"></i> Upload Files
+                </a>
+            </div>
+            {{end}}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Check authentication
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        window.location.href = '/login';
+        return;
+    }
+    
+    // Set current page for navigation
+    document.querySelector('a[href="/buckets"]').classList.add('active');
+});
+
+function toggleSelectAll() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.object-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+}
+
+function refreshObjects() {
+    window.location.reload();
+}
+
+function downloadObject(key) {
+    const token = localStorage.getItem('access_token');
+    const bucketId = {{.Bucket.ID}};
+    
+    // Create a temporary link to download the file
+    const link = document.createElement('a');
+    link.href = `/api/v1/buckets/${bucketId}/download?key=${encodeURIComponent(key)}`;
+    link.setAttribute('Authorization', `Bearer ${token}`);
+    link.download = key.split('/').pop(); // Extract filename from path
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function downloadAll() {
+    const selectedObjects = document.querySelectorAll('.object-checkbox:checked');
+    if (selectedObjects.length === 0) {
+        showAlert('Please select objects to download', 'warning');
+        return;
+    }
+    
+    selectedObjects.forEach(checkbox => {
+        downloadObject(checkbox.value);
+    });
+    
+    showAlert(`Downloading ${selectedObjects.length} object(s)`, 'info');
+}
+
+async function deleteObject(key) {
+    const token = localStorage.getItem('access_token');
+    const bucketId = {{.Bucket.ID}};
+    
+    try {
+        const response = await fetch(`/api/v1/buckets/${bucketId}/objects?key=${encodeURIComponent(key)}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.ok) {
+            showAlert(`Object "${key}" deleted successfully`, 'success');
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            const data = await response.json();
+            showAlert(data.error || 'Failed to delete object', 'danger');
+        }
+    } catch (error) {
+        showAlert('Network error. Please try again.', 'danger');
+    }
+}
+
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function showAlert(message, type = 'info') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.main-content');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+</script>
+{{end}}

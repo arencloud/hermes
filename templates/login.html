@@ -1,0 +1,174 @@
+{{define "content"}}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow-lg border-0">
+                <div class="card-body p-5">
+                    <div class="text-center mb-4">
+                        <i class="bi bi-cloud-storage text-primary" style="font-size: 3rem;"></i>
+                        <h2 class="mt-3 mb-1">Welcome to S3UM</h2>
+                        <p class="text-muted">Sign in to your account</p>
+                    </div>
+                    
+                    <form id="loginForm" method="POST" action="/auth/login">
+                        <div class="mb-3">
+                            <label for="tenant" class="form-label">Tenant</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-building"></i></span>
+                                <input type="text" class="form-control" id="tenant" name="tenant" 
+                                       placeholder="Enter tenant name or domain" required>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                <input type="text" class="form-control" id="username" name="username" 
+                                       placeholder="Enter username" required>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="password" class="form-label">Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                                <input type="password" class="form-control" id="password" name="password" 
+                                       placeholder="Enter password" required>
+                                <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg" id="loginBtn">
+                                <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                Sign In
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <div class="text-center mt-4">
+                        <p class="text-muted small">
+                            <i class="bi bi-shield-check"></i>
+                            Secure authentication powered by JWT
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Demo Credentials -->
+            <div class="card mt-3 border-0 bg-light">
+                <div class="card-body">
+                    <h6 class="card-title text-muted">
+                        <i class="bi bi-info-circle"></i> Demo Credentials
+                    </h6>
+                    <div class="row">
+                        <div class="col-6">
+                            <small class="text-muted">Tenant:</small><br>
+                            <code>default</code>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">User:</small><br>
+                            <code>admin</code>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <small class="text-muted">Password:</small><br>
+                        <code>password</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('loginForm');
+    const loginBtn = document.getElementById('loginBtn');
+    const spinner = loginBtn.querySelector('.spinner-border');
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+    
+    // Toggle password visibility
+    togglePassword.addEventListener('click', function() {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        togglePassword.innerHTML = type === 'password' ? '<i class="bi bi-eye"></i>' : '<i class="bi bi-eye-slash"></i>';
+    });
+    
+    // Form submission
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        // Show loading state
+        loginBtn.disabled = true;
+        spinner.classList.remove('d-none');
+        loginBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Signing In...';
+        
+        try {
+            const formData = new FormData(form);
+            const response = await fetch('/api/v1/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    tenant: formData.get('tenant'),
+                    username: formData.get('username'),
+                    password: formData.get('password')
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                // Store tokens
+                localStorage.setItem('access_token', data.access_token);
+                localStorage.setItem('refresh_token', data.refresh_token);
+                
+                // Redirect to dashboard
+                window.location.href = '/';
+            } else {
+                showAlert(data.error || 'Login failed', 'danger');
+            }
+        } catch (error) {
+            showAlert('Network error. Please try again.', 'danger');
+        } finally {
+            // Reset button state
+            loginBtn.disabled = false;
+            spinner.classList.add('d-none');
+            loginBtn.innerHTML = 'Sign In';
+        }
+    });
+    
+    // Auto-fill demo credentials for convenience
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        document.getElementById('tenant').value = 'default';
+        document.getElementById('username').value = 'admin';
+        document.getElementById('password').value = 'password';
+    }
+});
+
+function showAlert(message, type = 'info') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+</script>
+{{end}}

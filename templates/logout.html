@@ -1,0 +1,35 @@
+{{define "content"}}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card text-center border-0 shadow-lg">
+                <div class="card-body p-5">
+                    <div class="mb-4">
+                        <i class="bi bi-box-arrow-right text-primary" style="font-size: 4rem;"></i>
+                    </div>
+                    
+                    <h2 class="mb-3">Logging Out...</h2>
+                    <p class="text-muted">You are being logged out of S3UM.</p>
+                    
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Clear local storage
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    
+    // Redirect to login page after a short delay
+    setTimeout(() => {
+        window.location.href = '/login';
+    }, 1500);
+});
+</script>
+{{end}}
