@@ -1,0 +1,10 @@
+title = "Hermes Gitleaks Configuration"
+
+[allowlist]
+  description = "Allowlist template Kubernetes Secret manifests under deploy/"
+  files = [
+    '''deploy/k8s/hermes-secret\.yaml''',
+    '''deploy/openshift/hermes-secret\.yaml'''
+  ]
+
+# Keep default rules and scanning behavior otherwise.
