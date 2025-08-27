@@ -3,7 +3,7 @@ name: Release container image
 on:
   push:
     tags:
-      - 'v*'
+      - '*'
       - '*.*.*'
   pull_request:
     branches:
@@ -46,7 +46,10 @@ jobs:
           images: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}
           tags: |
+            # Tag releases with their git tag (e.g., v1.2.3)
             type=ref,event=tag
+            # Always add a fallback tag from the commit SHA for non-tag events (e.g., workflow_dispatch)
+            type=sha
           flavor: |
             latest=true
 
