@@ -5,7 +5,7 @@ A lightweight, multi‑tenant object storage console and API.
 Hermes lets organizations manage users, groups, and roles; connect to S3‑compatible storage (e.g., MinIO, AWS S3); browse, upload, and delete objects; and explore a protected OpenAPI documentation page — all wrapped in a clean Bootstrap UI.
 
 [![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?logo=go)](go.mod)
-[![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Docker Image](https://img.shields.io/badge/image-eduard1001171985%2Fhermes%3Av1.1.0-2496ED?logo=docker)](https://hub.docker.com/r/eduard1001171985/hermes)
 [![Status](https://img.shields.io/badge/status-active-success.svg)](#)
 
