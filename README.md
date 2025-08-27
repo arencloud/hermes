@@ -198,7 +198,7 @@ OpenShift/OKD (with kustomize):
 - This creates a Service and a Route (edge-terminated TLS by default). You can set a custom hostname by editing hermes-route.yaml.
 
 Image
-- The manifests reference the published Docker image `eduard1001171985/hermes:1.1.0`. Adjust the image name/tag to suit your registry, or use kustomize images to override.
+- The manifests reference the published Docker image `eduard1001171985/hermes:v1.1.0`. Adjust the image name/tag to suit your registry, or use kustomize images to override.
 
 Security
 - The image runs as non-root; OpenShift will assign an arbitrary UID. The app does not require filesystem write access.

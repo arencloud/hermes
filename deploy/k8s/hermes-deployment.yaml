@@ -23,7 +23,7 @@ spec:
         runAsNonRoot: true
       containers:
         - name: hermes
-          image: eduard1001171985/hermes:1.1.0
+          image: eduard1001171985/hermes:v1.1.0
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
