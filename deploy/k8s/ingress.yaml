@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hermes
+  labels:
+    app.kubernetes.io/name: hermes
+    app.kubernetes.io/part-of: hermes
+    app.kubernetes.io/component: web
+  annotations: {}
+  # Example:
+  # annotations:
+  #   kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+    - host: hermes.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: hermes
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - hermes.example.com
+      secretName: hermes-tls # Provide a TLS secret or remove this block for plain HTTP

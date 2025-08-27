@@ -1,25 +1,47 @@
-# Binaries for programs and plugins
+# Go build artifacts
+bin/
+build/
+dist/
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
-
-# Test binary, built with `go test -c`
 *.test
-
-# Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
-# Dependency directories (remove the comment below to include it)
-# vendor/
+# Go coverage / test cache
+coverage/
+*.cover
+*.coverprofile
+*.cov
+*.lcov
+*.prof
+.profile
 
-# IDE and editor files
+# Go modules cache (do not commit vendor unless intentionally vendored)
+vendor/
+
+# IDEs and editors
 .idea/
 .vscode/
-*.swp
-*.swo
+*.iml
+*.ipr
+*.iws
 
-# Build outputs
-bin/
-dist/
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+*~
+
+# Node/npm (if any tooling pulls it in; safe to ignore)
+node_modules/
+
+# Docker / Compose
+.env
+.docker/

@@ -1,0 +1,410 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Hermes API",
+    "version": "1.1.0",
+    "description": "Cookie-based authentication. Users with roles may access API. Super Admin role (key: super_admin) grants full access including buckets management and list."
+  },
+  "servers": [{"url": "/"}],
+  "security": [{"cookieAuth": []}],
+  "paths": {
+    "/api/v1/organizations": {
+      "get": {
+        "summary": "List organizations",
+        "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/Organization"}}}}}}
+      },
+      "post": {
+        "summary": "Create organization",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/OrganizationCreate"}}}},
+        "responses": {"201": {"description": "Created", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Organization"}}}}}
+      }
+    },
+    "/api/v1/organizations/{orgId}": {
+      "parameters": [{"in": "path","name": "orgId","required": true, "schema": {"type":"integer"}}],
+      "get": {"summary": "Get organization", "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Organization"}}}}}},
+      "put": {"summary": "Update organization", "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/OrganizationUpdate"}}}}, "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Organization"}}}}}},
+      "delete": {"summary": "Delete organization", "responses": {"204": {"description": "No Content"}}}
+    },
+
+    "/api/v1/organizations/{orgId}/users": {
+      "parameters": [{"in":"path","name":"orgId","required":true, "schema":{"type":"integer"}}],
+      "get": {"summary": "List users", "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/User"}}}}}}},
+      "post": {"summary": "Create user", "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/UserCreate"}}}}, "responses": {"201": {"description": "Created", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/User"}}}}}}
+    },
+    "/api/v1/organizations/{orgId}/users/{id}": {
+      "parameters": [
+        {"in":"path","name":"orgId","required":true, "schema":{"type":"integer"}},
+        {"in":"path","name":"id","required":true, "schema":{"type":"integer"}}
+      ],
+      "get": {"summary": "Get user", "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/User"}}}}}},
+      "put": {"summary": "Update user (email, displayName, isActive, password)", "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/UserUpdate"}}}}, "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/User"}}}}}},
+      "delete": {"summary": "Delete user", "responses": {"204": {"description": "No Content"}}}
+    },
+    "/api/v1/organizations/{orgId}/users/{id}/profile": {
+      "parameters": [
+        {"in":"path","name":"orgId","required":true, "schema":{"type":"integer"}},
+        {"in":"path","name":"id","required":true, "schema":{"type":"integer"}}
+      ],
+      "get": {"summary": "Get user profile", "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/UserProfile"}}}}, "404": {"description": "Not Found"}}},
+      "put": {"summary": "Create or update user profile", "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/UserProfileUpdate"}}}}, "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/UserProfile"}}}}}}
+    },
+
+    "/api/v1/organizations/{orgId}/groups": {
+      "parameters": [{"in":"path","name":"orgId","required":true, "schema":{"type":"integer"}}],
+      "get": {"summary": "List groups", "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/Group"}}}}}}},
+      "post": {"summary": "Create group", "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/GroupCreate"}}}}, "responses": {"201": {"description": "Created", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Group"}}}}}}
+    },
+    "/api/v1/organizations/{orgId}/groups/{id}": {
+      "parameters": [
+        {"in":"path","name":"orgId","required":true, "schema":{"type":"integer"}},
+        {"in":"path","name":"id","required":true, "schema":{"type":"integer"}}
+      ],
+      "get": {"summary": "Get group", "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Group"}}}}}},
+      "put": {"summary": "Update group", "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/GroupUpdate"}}}}, "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Group"}}}}}},
+      "delete": {"summary": "Delete group", "responses": {"204": {"description": "No Content"}}}
+    },
+
+    "/api/v1/organizations/{orgId}/roles": {
+      "parameters": [{"in":"path","name":"orgId","required":true, "schema":{"type":"integer"}}],
+      "get": {"summary": "List roles", "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/Role"}}}}}}},
+      "post": {"summary": "Create role", "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RoleCreate"}}}}, "responses": {"201": {"description": "Created", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Role"}}}}}}
+    },
+    "/api/v1/organizations/{orgId}/roles/{id}": {
+      "parameters": [
+        {"in":"path","name":"orgId","required":true, "schema":{"type":"integer"}},
+        {"in":"path","name":"id","required":true, "schema":{"type":"integer"}}
+      ],
+      "get": {"summary": "Get role", "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Role"}}}}}},
+      "put": {"summary": "Update role", "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RoleUpdate"}}}}, "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Role"}}}}}},
+      "delete": {"summary": "Delete role", "responses": {"204": {"description": "No Content"}}}
+    },
+
+    "/api/v1/organizations/{orgId}/memberships": {
+      "parameters": [{"in":"path","name":"orgId","required":true, "schema":{"type":"integer"}}],
+      "get": {"summary": "List group memberships", "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/Membership"}}}}}}},
+      "post": {"summary": "Create membership", "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/MembershipCreate"}}}}, "responses": {"201": {"description": "Created", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Membership"}}}}}}
+    },
+    "/api/v1/organizations/{orgId}/memberships/{id}": {
+      "parameters": [
+        {"in":"path","name":"orgId","required":true, "schema":{"type":"integer"}},
+        {"in":"path","name":"id","required":true, "schema":{"type":"integer"}}
+      ],
+      "get": {"summary": "Get membership", "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Membership"}}}}}},
+      "delete": {"summary": "Delete membership", "responses": {"204": {"description": "No Content"}}}
+    },
+
+    "/api/v1/organizations/{orgId}/role-assignments": {
+      "parameters": [{"in":"path","name":"orgId","required":true, "schema":{"type":"integer"}}],
+      "get": {"summary": "List role assignments", "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/RoleAssignment"}}}}}}},
+      "post": {"summary": "Create role assignment", "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RoleAssignmentCreate"}}}}, "responses": {"201": {"description": "Created", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RoleAssignment"}}}}}}
+    },
+    "/api/v1/organizations/{orgId}/role-assignments/{id}": {
+      "parameters": [
+        {"in":"path","name":"orgId","required":true, "schema":{"type":"integer"}},
+        {"in":"path","name":"id","required":true, "schema":{"type":"integer"}}
+      ],
+      "get": {"summary": "Get role assignment", "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RoleAssignment"}}}}}},
+      "delete": {"summary": "Delete role assignment", "responses": {"204": {"description": "No Content"}}}
+    },
+
+    "/api/v1/organizations/{orgId}/group-role-assignments": {
+      "parameters": [{"in":"path","name":"orgId","required":true, "schema":{"type":"integer"}}],
+      "get": {"summary": "List group role assignments", "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/GroupRoleAssignment"}}}}}}},
+      "post": {"summary": "Create group role assignment", "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/GroupRoleAssignmentCreate"}}}}, "responses": {"201": {"description": "Created", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/GroupRoleAssignment"}}}}}}
+    },
+    "/api/v1/organizations/{orgId}/group-role-assignments/{id}": {
+      "parameters": [
+        {"in":"path","name":"orgId","required":true, "schema":{"type":"integer"}},
+        {"in":"path","name":"id","required":true, "schema":{"type":"integer"}}
+      ],
+      "get": {"summary": "Get group role assignment", "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/GroupRoleAssignment"}}}}}},
+      "delete": {"summary": "Delete group role assignment", "responses": {"204": {"description": "No Content"}}}
+    },
+
+    "/api/v1/organizations/{orgId}/storages": {
+      "parameters": [{"in":"path","name":"orgId","required":true, "schema":{"type":"integer"}}],
+      "get": {"summary": "List S3 storage configs", "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/S3Storage"}}}}}}},
+      "post": {"summary": "Create S3 storage config", "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/S3StorageCreate"}}}}, "responses": {"201": {"description": "Created", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/S3Storage"}}}}}}
+    },
+    "/api/v1/organizations/{orgId}/storages/{id}": {
+      "parameters": [
+        {"in":"path","name":"orgId","required":true, "schema":{"type":"integer"}},
+        {"in":"path","name":"id","required":true, "schema":{"type":"integer"}}
+      ],
+      "get": {"summary": "Get S3 storage config", "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/S3Storage"}}}}}},
+      "put": {"summary": "Update S3 storage config", "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/S3StorageUpdate"}}}}, "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/S3Storage"}}}}}},
+      "delete": {"summary": "Delete S3 storage config", "responses": {"204": {"description": "No Content"}}}
+    },
+    "/api/v1/organizations/{orgId}/storages/{id}/objects": {
+      "parameters": [
+        {"in":"path","name":"orgId","required":true, "schema":{"type":"integer"}},
+        {"in":"path","name":"id","required":true, "schema":{"type":"integer"}}
+      ],
+      "get": {"summary": "List objects in bucket", "responses": {"200": {"description": "OK"}}},
+      "post": {"summary": "Upload object (multipart form with file)", "requestBody": {"required": true, "content": {"multipart/form-data": {"schema": {"type": "object", "properties": {"file": {"type": "string", "format": "binary"}, "key": {"type": "string"}}, "required": ["file"]}}}}, "responses": {"201": {"description": "Created"}}}
+    },
+    "/api/v1/organizations/{orgId}/storages/{id}/objects/{key}": {
+      "parameters": [
+        {"in":"path","name":"orgId","required":true, "schema":{"type":"integer"}},
+        {"in":"path","name":"id","required":true, "schema":{"type":"integer"}},
+        {"in":"path","name":"key","required":true, "schema":{"type":"string"}}
+      ],
+      "get": {"summary": "Download object", "responses": {"200": {"description": "Content"}}},
+      "delete": {"summary": "Delete object", "responses": {"204": {"description": "No Content"}}}
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "cookieAuth": {"type": "apiKey", "in": "cookie", "name": "auth"}
+    },
+    "schemas": {
+      "Organization": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer"},
+          "name": {"type": "string"},
+          "slug": {"type": "string"},
+          "domain": {"type": "string"},
+          "description": {"type": "string"},
+          "isActive": {"type": "boolean"},
+          "createdAt": {"type": "string", "format": "date-time"},
+          "updatedAt": {"type": "string", "format": "date-time"}
+        },
+        "required": ["id", "name"]
+      },
+      "OrganizationCreate": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "slug": {"type": "string"},
+          "domain": {"type": "string"},
+          "description": {"type": "string"},
+          "isActive": {"type": "boolean"}
+        },
+        "required": ["name"]
+      },
+      "OrganizationUpdate": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "slug": {"type": "string"},
+          "domain": {"type": "string"},
+          "description": {"type": "string"},
+          "isActive": {"type": "boolean"}
+        }
+      },
+
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer"},
+          "organizationId": {"type": "integer"},
+          "email": {"type": "string", "format": "email"},
+          "displayName": {"type": "string"},
+          "isActive": {"type": "boolean"},
+          "lastLoginAt": {"type": "string", "format": "date-time"},
+          "createdAt": {"type": "string", "format": "date-time"},
+          "updatedAt": {"type": "string", "format": "date-time"}
+        },
+        "required": ["id", "organizationId", "email"]
+      },
+      "UserCreate": {
+        "type": "object",
+        "properties": {
+          "email": {"type": "string", "format": "email"},
+          "displayName": {"type": "string"},
+          "password": {"type": "string", "format": "password", "writeOnly": true},
+          "isActive": {"type": "boolean"}
+        },
+        "required": ["email", "password"]
+      },
+      "UserUpdate": {
+        "type": "object",
+        "properties": {
+          "email": {"type": "string", "format": "email"},
+          "displayName": {"type": "string"},
+          "password": {"type": "string", "format": "password", "writeOnly": true},
+          "isActive": {"type": "boolean"}
+        }
+      },
+
+      "UserProfile": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer"},
+          "organizationId": {"type": "integer"},
+          "userId": {"type": "integer"},
+          "firstName": {"type": "string"},
+          "lastName": {"type": "string"},
+          "phone": {"type": "string"},
+          "avatarUrl": {"type": "string", "format": "uri"},
+          "bio": {"type": "string"},
+          "createdAt": {"type": "string", "format": "date-time"},
+          "updatedAt": {"type": "string", "format": "date-time"}
+        },
+        "required": ["id", "organizationId", "userId"]
+      },
+      "UserProfileUpdate": {
+        "type": "object",
+        "properties": {
+          "firstName": {"type": "string"},
+          "lastName": {"type": "string"},
+          "phone": {"type": "string"},
+          "avatarUrl": {"type": "string", "format": "uri"},
+          "bio": {"type": "string"}
+        }
+      },
+
+      "Group": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer"},
+          "organizationId": {"type": "integer"},
+          "name": {"type": "string"},
+          "description": {"type": "string"},
+          "createdAt": {"type": "string", "format": "date-time"},
+          "updatedAt": {"type": "string", "format": "date-time"}
+        },
+        "required": ["id", "organizationId", "name"]
+      },
+      "GroupCreate": {
+        "type": "object",
+        "properties": {"name": {"type": "string"}, "description": {"type": "string"}},
+        "required": ["name"]
+      },
+      "GroupUpdate": {
+        "type": "object",
+        "properties": {"name": {"type": "string"}, "description": {"type": "string"}}
+      },
+
+      "Role": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer"},
+          "organizationId": {"type": "integer"},
+          "name": {"type": "string"},
+          "key": {"type": "string"},
+          "isSystem": {"type": "boolean"},
+          "description": {"type": "string"},
+          "canPull": {"type": "boolean"},
+          "canPush": {"type": "boolean"},
+          "createdAt": {"type": "string", "format": "date-time"},
+          "updatedAt": {"type": "string", "format": "date-time"}
+        },
+        "required": ["id", "organizationId", "name"]
+      },
+      "RoleCreate": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "key": {"type": "string"},
+          "description": {"type": "string"},
+          "canPull": {"type": "boolean"},
+          "canPush": {"type": "boolean"}
+        },
+        "required": ["name"]
+      },
+      "RoleUpdate": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "key": {"type": "string"},
+          "description": {"type": "string"},
+          "canPull": {"type": "boolean"},
+          "canPush": {"type": "boolean"}
+        }
+      },
+
+      "Membership": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer"},
+          "organizationId": {"type": "integer"},
+          "userId": {"type": "integer"},
+          "groupId": {"type": "integer"}
+        },
+        "required": ["id", "organizationId", "userId", "groupId"]
+      },
+      "MembershipCreate": {
+        "type": "object",
+        "properties": {"userId": {"type": "integer"}, "groupId": {"type": "integer"}},
+        "required": ["userId", "groupId"]
+      },
+
+      "RoleAssignment": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer"},
+          "organizationId": {"type": "integer"},
+          "userId": {"type": "integer"},
+          "roleId": {"type": "integer"}
+        },
+        "required": ["id", "organizationId", "userId", "roleId"]
+      },
+      "RoleAssignmentCreate": {
+        "type": "object",
+        "properties": {"userId": {"type": "integer"}, "roleId": {"type": "integer"}},
+        "required": ["userId", "roleId"]
+      },
+
+      "GroupRoleAssignment": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer"},
+          "organizationId": {"type": "integer"},
+          "groupId": {"type": "integer"},
+          "roleId": {"type": "integer"}
+        },
+        "required": ["id", "organizationId", "groupId", "roleId"]
+      },
+      "GroupRoleAssignmentCreate": {
+        "type": "object",
+        "properties": {"groupId": {"type": "integer"}, "roleId": {"type": "integer"}},
+        "required": ["groupId", "roleId"]
+      },
+
+      "S3Storage": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer"},
+          "organizationId": {"type": "integer"},
+          "name": {"type": "string"},
+          "endpoint": {"type": "string"},
+          "region": {"type": "string"},
+          "accessKey": {"type": "string"},
+          "secretKey": {"type": "string"},
+          "useSSL": {"type": "boolean"},
+          "bucket": {"type": "string"},
+          "createdAt": {"type": "string", "format": "date-time"},
+          "updatedAt": {"type": "string", "format": "date-time"}
+        },
+        "required": ["id", "organizationId", "name", "endpoint", "accessKey", "secretKey", "bucket"]
+      },
+      "S3StorageCreate": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "endpoint": {"type": "string"},
+          "region": {"type": "string"},
+          "accessKey": {"type": "string"},
+          "secretKey": {"type": "string"},
+          "useSSL": {"type": "boolean"},
+          "bucket": {"type": "string"}
+        },
+        "required": ["name", "endpoint", "accessKey", "secretKey", "bucket"]
+      },
+      "S3StorageUpdate": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "endpoint": {"type": "string"},
+          "region": {"type": "string"},
+          "accessKey": {"type": "string"},
+          "secretKey": {"type": "string"},
+          "useSSL": {"type": "boolean"},
+          "bucket": {"type": "string"}
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - hermes-config.yaml
+  - hermes-secret.yaml
+  - hermes-deployment.yaml
+  - hermes-service.yaml
+  - hermes-route.yaml
+# To override the image, you can uncomment and edit the following:
+# images:
+#   - name: ghcr.io/example/hermes
+#     newTag: latest

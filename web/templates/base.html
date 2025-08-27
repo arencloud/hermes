@@ -1,0 +1,67 @@
+{{define "base_top"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{if .Title}}{{.Title}} · {{end}}{{appDisplay}}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2212%22%20ry%3D%2212%22%20fill%3D%23000/%3E%3Cpath%20d%3D%22M36%206L14%2036h12l-4%2022%2028-34H38l-2-18z%22%20fill%3D%23FFC107/%3E%3C/svg%3E">
+  <style>
+    body { padding-top: 4.5rem; }
+    .navbar-brand i { margin-right: .25rem; }
+    footer { margin-top: 3rem; padding: 1rem 0; color: #6c757d; border-top: 1px solid #e9ecef; }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="/"><i class="bi bi-lightning-charge-fill"></i>Hermes</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item"><a class="nav-link" href="/dashboard"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+          {{if .CanPush}}
+          <li class="nav-item"><a class="nav-link" href="/buckets"><i class="bi bi-hdd-stack"></i> Buckets</a></li>
+          {{end}}
+          {{if .CanPull}}
+          <li class="nav-item"><a class="nav-link" href="/buckets/list"><i class="bi bi-list-ul"></i> List</a></li>
+          {{end}}
+          {{if eq .Role "admin"}}
+          <li class="nav-item"><a class="nav-link" href="/admin"><i class="bi bi-gear"></i> Admin</a></li>
+          {{end}}
+          {{if .HasRole}}
+          <li class="nav-item"><a class="nav-link" href="/docs"><i class="bi bi-journal-code"></i> API Docs</a></li>
+          {{end}}
+        </ul>
+        <ul class="navbar-nav">
+          {{if .Username}}
+            <li class="nav-item"><span class="navbar-text"><i class="bi bi-person-circle"></i> {{.Username}}{{if .Role}} ({{.Role}}){{end}}</span></li>
+            <li class="nav-item ms-3"><a class="btn btn-outline-light btn-sm" href="/profile"><i class="bi bi-person-lines-fill"></i> My Profile</a></li>
+            <li class="nav-item ms-2"><a class="btn btn-warning btn-sm" href="/logout"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+          {{else}}
+            <li class="nav-item"><a class="btn btn-outline-light btn-sm" href="/login"><i class="bi bi-box-arrow-in-right"></i> Login</a></li>
+            <li class="nav-item ms-2"><a class="btn btn-warning btn-sm" href="/signup"><i class="bi bi-person-plus"></i> Sign up</a></li>
+          {{end}}
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+{{end}}
+
+{{define "base_bottom"}}
+  </main>
+
+  <footer class="container text-center">
+    <small>© {{nowYear}} {{appDisplay}}</small>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+{{end}}

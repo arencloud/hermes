@@ -1,0 +1,45 @@
+schemaVersion: 2.2.0
+metadata:
+  name: hermes
+  version: 1.0.0
+projects:
+  - name: hermes
+    source:
+      type: git
+      location: .
+components:
+  - name: tools
+    container:
+      image: golang:1.22
+      mountSources: true
+      env:
+        - name: DB_HOST
+          value: db
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_USER
+          value: postgres
+        - name: DB_PASSWORD
+          value: postgres
+        - name: DB_NAME
+          value: hermes
+      endpoints:
+        - name: api
+          targetPort: 8080
+          exposure: public
+commands:
+  - id: build
+    exec:
+      component: tools
+      commandLine: go build -o bin/hermes ./cmd/hermes
+      workingDir: /projects
+  - id: run
+    exec:
+      component: tools
+      commandLine: go run ./cmd/hermes
+      workingDir: /projects
+  - id: test
+    exec:
+      component: tools
+      commandLine: go test ./...
+      workingDir: /projects

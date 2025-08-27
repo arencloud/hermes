@@ -1,0 +1,42 @@
+{{template "base_top" .}}
+<div class="row justify-content-center">
+  <div class="col-md-6 col-lg-5">
+    <div class="card shadow-sm">
+      <div class="card-body p-4">
+        <h1 class="h4 mb-3"><i class="bi bi-box-arrow-in-right"></i> Sign in</h1>
+        {{if .LoginMessage}}
+        <div class="alert alert-success" role="alert">{{.LoginMessage}}</div>
+        {{end}}
+        {{if .Error}}
+        <div class="alert alert-danger" role="alert">{{.Error}}</div>
+        {{end}}
+        <form method="post" action="/login">
+          <div class="mb-3">
+            <label class="form-label">Organization</label>
+            <select class="form-select" name="orgId" required>
+              <option value="">Select organization...</option>
+              {{range .Organizations}}
+                <option value="{{.ID}}" {{if eq .ID $.SelectedOrgID}}selected{{end}}>{{.Name}}</option>
+              {{end}}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input class="form-control" type="email" name="email" value="{{.PrefillEmail}}" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Password</label>
+            <input class="form-control" type="password" name="password" required>
+          </div>
+          <div class="d-grid gap-2">
+            <button class="btn btn-primary" type="submit"><i class="bi bi-box-arrow-in-right"></i> Sign in</button>
+          </div>
+        </form>
+        <div class="text-center mt-3">
+          <small>Don't have an account? <a href="/signup">Sign up</a></small>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{{template "base_bottom" .}}

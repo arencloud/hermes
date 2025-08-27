@@ -1,129 +1,215 @@
-Hermes
+# Hermes
 
-Hermes is a lightweight web application for exploring a multi-tenant object storage concept with a simple UI, role-based access control, and optional PostgreSQL-backed user management. It provides server-rendered pages for common workflows (login, dashboard, tenants, buckets, uploads, users, profile) and a small JSON API for authentication and user administration.
+A lightweight, multi‑tenant object storage console and API.
 
-Key features
-- Login/logout with session-based authentication
-- Built-in default admin user on first run
-- Role-based pages (admin-only Users section)
-- Optional PostgreSQL persistence for users (fallback to in-memory store)
-- Health endpoint for orchestration (/healthz)
+Hermes lets organizations manage users, groups, and roles; connect to S3‑compatible storage (e.g., MinIO, AWS S3); browse, upload, and delete objects; and explore a protected OpenAPI documentation page — all wrapped in a clean Bootstrap UI.
 
-Project layout
-- cmd/hermes/main.go — web server and routes (Gin)
-- internal/auth — auth store, middleware, optional PostgreSQL integration
-- templates/ — server-rendered HTML templates
-- Containerfile — multi-stage container build
-- docker-compose.yml — app + PostgreSQL for local dev
-- Makefile — convenience targets for dev and ops
+[![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?logo=go)](go.mod)
+[![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
+[![Docker Image](https://img.shields.io/badge/image-eduard1001171985%2Fhermes%3A1.1.0-2496ED?logo=docker)](https://hub.docker.com/r/eduard1001171985/hermes)
+[![Status](https://img.shields.io/badge/status-active-success.svg)](#)
 
-Requirements
-- Go 1.22+ (for local builds)
-- Podman or Docker (for containers); podman-compose or docker-compose for orchestration
 
-Configuration (environment variables)
-- PORT: Web server port (default: 8080)
-- HERMES_SESSION_SECRET: Cookie/session secret (default: dev-secret-change-me; change in production)
-- DATABASE_URL: PostgreSQL DSN. If set, Hermes stores users in Postgres; if empty, uses in-memory store
-  Example: postgres://postgres:postgres@localhost:5432/hermes?sslmode=disable
+## 📚 Table of Contents
+- [Features](#features)
+- [Quick Start](#quick-start)
+- [First‑time Setup](#first-time-setup)
+- [Auth, Roles & Permissions](#auth-roles--permissions)
+- [S3/MinIO integration](#s3minio-integration)
+- [API](#api)
+- [Development](#development)
+- [Configuration](#configuration)
+- [Logging](#logging)
+- [Tooling](#tooling)
+- [Deploying on Kubernetes and OpenShift/OKD](#deploying-on-kubernetes-and-openshiftokd)
+- [License](#license)
+- [Versioning](#versioning)
+- [Support & Feedback](#support--feedback)
 
-Health check
-- GET /healthz returns "ok" when the app is running
 
-Quick start
-Option A — Run locally (no DB, in-memory users)
-1) Build and run
-   make run
-   # or:
-   go build -o bin/hermes ./cmd/hermes && PORT=8080 ./bin/hermes
-2) Open http://localhost:8080
+## ✨ Features
+- Organizations, Users, Groups, Roles with assignments (users ↔ roles, groups ↔ roles)
+- Fine‑grained permissions via role capabilities: Pull (read) and Push (write)
+- Super Admin role grants full access automatically
+- S3 storage configuration per organization (endpoint, region, keys, bucket)
+- Buckets UI: manage configs, list/browse objects, upload and delete
+- Embedded, protected API Docs (/docs) and standalone Swagger UI (/swagger)
+- Cookie‑based auth with clean login/signup flows
+- Self‑service profile and password management
+- JSON REST API with OpenAPI spec
 
-Option B — Containers with PostgreSQL (recommended for full features)
-1) Start with compose (builds the image, starts Postgres and Hermes)
-   make up
-   # or if you use docker-compose instead of podman-compose:
-   COMPOSE=docker-compose make up
-2) Open http://localhost:8080
-3) Tail logs (optional)
-   make logs
-4) Stop
-   make down
 
-Option C — Build and run the container directly
-- Build image
-  podman build -t hermes:dev -f Containerfile .
-  # or: docker build -t hermes:dev -f Containerfile .
-- Run (without DB, in-memory users)
-  podman run --rm -p 8080:8080 -e PORT=8080 -e HERMES_SESSION_SECRET=dev-secret-change-me hermes:dev
+## 📦 Quick Start
 
-Default credentials
-- Username: admin
-- Password: password
-Note: The default admin is created at startup. Change the password immediately for any non-development use.
+You’ll need Docker (or Podman) and Docker Compose for dependencies.
 
-How to use Hermes
-1) Login
-   - Visit http://localhost:8080
-   - You will be redirected to /login
-   - Enter: admin / password (default)
-2) Dashboard
-   - After login, you’ll land on the Dashboard with placeholder stats
-3) Buckets
-   - Navigate to Buckets to see a placeholder list
-   - Click a bucket to view details (mock) and the Upload page link
-4) Tenants
-   - Tenants page displays a placeholder list of tenants
-5) Users (admin-only)
-   - Navigate to Users to view current users
-   - Create, update, and delete users via the UI or JSON API (see below)
-6) Profile
-   - View basic profile information under Profile
-7) Logout
-   - Use the logout link to end your session
+1) Start dependencies (PostgreSQL, MinIO):
 
-JSON API (admin where indicated)
-- POST /api/v1/auth/login
-  Body: {"tenant":"default","username":"admin","password":"password"}
-  Response: {"access_token":"dummy-access-token","refresh_token":"dummy-refresh-token"}
-  Note: Tokens are placeholders; sessions are used for the server-rendered UI.
+```bash
+docker compose up -d
+# or: podman-compose up -d
+```
 
-- GET /api/v1/users (admin)
-  Response: {"users":[{"username":"...","role":"...","tenant":"..."}, ...]}
+- Postgres: localhost:5432 (postgres/postgres)
+- MinIO: http://localhost:9000 (console: http://localhost:9001)
+  - Default creds: minioadmin / minioadmin (from docker-compose.yml)
 
-- POST /api/v1/users (admin)
-  Body: {"username":"u","password":"p","role":"user|developer|admin","tenant":"t"}
+2) Run Hermes locally (default port: 8080):
 
-- PUT /api/v1/users/:username (admin)
-  Body: {"role":"...","tenant":"...","password":"optional-new-password"}
+Using Makefile:
+```bash
+make run
+```
 
-- DELETE /api/v1/users/:username (admin)
+Or with Go:
+```bash
+go mod tidy
+go build -o bin/hermes ./cmd/hermes
+DB_HOST=localhost DB_PORT=5432 DB_USER=postgres DB_PASSWORD=postgres DB_NAME=hermes \
+  ./bin/hermes
+```
 
-Security notes
-- Always set a strong HERMES_SESSION_SECRET in production
-- Change the default admin password immediately
-- Use HTTPS and secure cookie settings in real deployments (reverse proxy/ingress recommended)
+Then open http://localhost:8080
 
-Next steps (how to run and how to use)
-1) Choose your run mode
-   - Quick test: make run (in-memory users)
-   - Full local stack: make up (with PostgreSQL)
-   - Container-only: podman run -p 8080:8080 hermes:dev
-2) Open the app
-   - Visit http://localhost:8080 (or your mapped PORT)
-3) Login
-   - Use admin / password (change immediately after login)
-4) Explore the UI
-   - Dashboard: Overview
-   - Users: Create a non-admin user for daily use
-   - Tenants and Buckets: Explore pages and flows
-   - Upload: Visit any bucket’s Upload page (mock UI)
-5) Persist users (optional)
-   - Ensure DATABASE_URL is set (via docker-compose or env var) to enable PostgreSQL-backed users
-6) Operational checks
-   - Health: curl -fsS http://localhost:${PORT:-8080}/healthz
-   - Logs: make logs (when using compose)
 
-Troubleshooting
-- Build behind proxy: set build args GOPROXY and GOSUMDB via docker-compose or podman build
-- Permission issues during container build: this repo uses a writable WORKDIR and builds into ./out/ in the builder stage
-- Postgres connectivity: verify DATABASE_URL, container health, and that db service is healthy before Hermes starts
+## 🧭 First‑time Setup
+- Click "Sign up" to create your first Organization and Admin user.
+- The initial user is assigned the system "Super Admin" role, which automatically enables both Pull and Push capabilities.
+- After you sign in, you’ll see:
+  - Dashboard
+  - Buckets (if you have Push)
+  - List (if you have Pull)
+  - Admin (if you’re Super Admin)
+  - API Docs (visible to any user having at least one role)
+
+
+## 🔐 Auth, Roles & Permissions
+- Authentication uses simple secure cookies.
+- Role capabilities:
+  - Pull: can view buckets, list/download objects
+  - Push: can create/update/delete storages and upload/delete objects
+- Super Admin: special system role (key: `super_admin`), always grants both Pull and Push and is treated as Admin in the UI.
+- Access to API Docs (/docs and /openapi.json via /swagger) is protected. A user must be authenticated and have at least one role to view Swagger.
+
+
+## ☁️ S3/MinIO integration
+- Configure S3 storage per organization under Buckets -> Manage.
+- Fields: name, endpoint, region (optional), accessKey, secretKey, useSSL, bucket.
+- Browse objects and upload/delete via UI when permitted.
+
+
+## 🧪 API
+- Base path: `/api/v1`
+- OpenAPI spec served at `/openapi.json` (protected). UI at:
+  - Embedded: `/docs` (inside app layout)
+  - Standalone: `/swagger`
+- Security scheme: cookieAuth (`auth` cookie)
+
+OpenAPI is kept in `openapi/openapi.json`.
+
+
+## 🛠️ Development
+
+Prerequisites:
+- Go 1.24+ (go.mod sets go 1.24 and toolchain go1.24.6; with GOTOOLCHAIN=auto, Go 1.21–1.23 can auto-download the 1.24 toolchain)
+
+Common tasks:
+- Build: `make build`
+- Run: `make run`
+- Clean: `make clean`
+- Container image (Podman): `make image-build` / `make image-push`
+- Provision deps (Podman Compose): `make provision` / `make deprovision`
+
+Project layout:
+- `cmd/hermes/` – application entrypoint
+- `internal/controllers/` – REST controllers
+- `internal/routes/` – API and web route wiring
+- `internal/models/` – GORM models
+- `internal/database/` – DB connection and migrations
+- `internal/s3svc/` – S3/MinIO service helpers
+- `web/templates/` – Bootstrap UI templates
+- `openapi/openapi.json` – API specification
+
+
+## ⚙️ Configuration
+Hermes reads DB connection from environment variables:
+
+- `DB_HOST` (default `localhost`)
+- `DB_PORT` (default `5432`)
+- `DB_USER` (default `postgres`)
+- `DB_PASSWORD` (default `postgres`)
+- `DB_NAME` (default `hermes`)
+- `DB_SSLMODE` (default `disable`)
+
+At startup, Hermes auto‑migrates the schema for all models.
+
+
+## 🧾 Logging
+Hermes uses structured logging suitable for Kubernetes, OpenShift/OKD, and Podman environments. Logs are emitted to stdout/stderr in JSON by default and include level, timestamp (RFC3339), message, and caller information. HTTP access logs are produced via gin/zap middleware and panics are recovered with stack traces.
+
+Environment variables:
+- `HERMES_LOG_FORMAT`: `json` (default) or `console`
+- `HERMES_LOG_LEVEL`: `debug`, `info` (default), `warn`, `error`
+- `HERMES_LOG_TIME`: `rfc3339` (default) or `epoch`
+
+The deployment config maps set sensible defaults for production (JSON/info). You can override by setting env vars on the Deployment/Pod.
+
+
+## 🧰 Tooling
+- Web framework: Gin
+- ORM: GORM (PostgreSQL)
+- UI: Bootstrap 5 + Bootstrap Icons
+- Object storage: MinIO / S3 compatible
+
+
+## 📄 License
+This project is open source. See the [LICENSE](LICENSE) file for details.
+
+
+## 🏗️ Deploying on Kubernetes and OpenShift/OKD
+
+Manifests are provided under deploy/ for both generic Kubernetes and OpenShift/OKD.
+
+Important notes:
+- Hermes requires a reachable PostgreSQL database. Provide its connection details via environment variables (see Configuration section) using the provided ConfigMap and Secret.
+- S3/MinIO configuration is done inside the app UI per organization; no S3 env vars are needed.
+- The container listens on port 8080 and exposes /healthz for liveness/readiness probes.
+
+Kubernetes (with kustomize):
+
+1) Prepare DB settings
+- Edit deploy/k8s/hermes-config.yaml to set DB_HOST, DB_PORT, DB_USER, DB_NAME, DB_SSLMODE.
+- Edit deploy/k8s/hermes-secret.yaml to set DB_PASSWORD (base64-encoded).
+- Optionally, deploy the example PostgreSQL stack for testing: kubectl apply -f deploy/k8s/postgres-example.yaml, then set DB_HOST=postgres in the ConfigMap.
+
+2) Deploy Hermes
+- kubectl apply -k deploy/k8s
+- Optionally configure an Ingress by editing deploy/k8s/ingress.yaml (set host and TLS secret).
+
+OpenShift/OKD (with kustomize):
+
+1) Prepare DB settings
+- Edit deploy/openshift/hermes-config.yaml to set DB_* values to your database service.
+- Edit deploy/openshift/hermes-secret.yaml to set DB_PASSWORD (base64-encoded).
+
+2) Deploy Hermes and expose with a Route
+- oc apply -k deploy/openshift
+- This creates a Service and a Route (edge-terminated TLS by default). You can set a custom hostname by editing hermes-route.yaml.
+
+Image
+- The manifests reference the published Docker image `eduard1001171985/hermes:1.1.0`. Adjust the image name/tag to suit your registry, or use kustomize images to override.
+
+Security
+- The image runs as non-root; OpenShift will assign an arbitrary UID. The app does not require filesystem write access.
+
+Uninstall
+- Kubernetes: kubectl delete -k deploy/k8s
+- OpenShift: oc delete -k deploy/openshift
+
+
+## 🏷️ Versioning
+Hermes v1.1.0 — the app name and version appear in the UI title and Swagger.
+
+
+## 🙋 Support & Feedback
+Issues and feature requests are welcome. Please open an issue or a PR.

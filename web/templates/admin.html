@@ -1,0 +1,31 @@
+{{template "base_top" .}}
+<div class="row">
+  <div class="col-12">
+    <div class="d-flex align-items-center mb-3">
+      <i class="bi bi-gear display-6 me-2"></i>
+      <h1 class="h3 mb-0">Administration</h1>
+    </div>
+    <div class="alert alert-warning"><i class="bi bi-exclamation-triangle"></i> Admin-only section.</div>
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-header"><i class="bi bi-people"></i> Users & Roles</div>
+          <div class="card-body">
+            <p>Manage organization users and role assignments.</p>
+            <a class="btn btn-outline-primary" href="/admin/users-roles"><i class="bi bi-people"></i> Manage Users & Roles</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-header"><i class="bi bi-building"></i> Organization</div>
+          <div class="card-body">
+            <p>View and edit organization settings.</p>
+            <a class="btn btn-outline-secondary disabled" aria-disabled="true"><i class="bi bi-building"></i> Coming soon</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{{template "base_bottom" .}}

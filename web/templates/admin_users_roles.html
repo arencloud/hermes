@@ -1,0 +1,998 @@
+{{template "base_top" .}}
+<div class="row">
+  <div class="col-12">
+    <div class="d-flex align-items-center mb-3">
+      <i class="bi bi-people display-6 me-2"></i>
+      <h1 class="h3 mb-0">Users, Groups & Roles</h1>
+    </div>
+    <div class="alert alert-secondary d-flex align-items-center" role="alert">
+      <i class="bi bi-info-circle me-2"></i>
+      <div>
+        Organization: <strong id="orgName">{{.OrgName}}</strong>
+      </div>
+    </div>
+
+    <ul class="nav nav-tabs" id="adminTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="users-tab" data-bs-toggle="tab" data-bs-target="#users" type="button" role="tab">Users</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="groups-tab" data-bs-toggle="tab" data-bs-target="#groups" type="button" role="tab">Groups</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="roles-tab" data-bs-toggle="tab" data-bs-target="#roles" type="button" role="tab">Roles</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="assignments-tab" data-bs-toggle="tab" data-bs-target="#assignments" type="button" role="tab">User role assignments</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="memberships-tab" data-bs-toggle="tab" data-bs-target="#memberships" type="button" role="tab">Group memberships</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="group-roles-tab" data-bs-toggle="tab" data-bs-target="#groupRoles" type="button" role="tab">Group role assignments</button>
+      </li>
+    </ul>
+
+    <div class="tab-content pt-3">
+      <!-- Users Tab -->
+      <div class="tab-pane fade show active" id="users" role="tabpanel">
+        <div class="row g-3">
+          <div class="col-lg-7">
+            <div class="card">
+              <div class="card-header"><i class="bi bi-people"></i> Users</div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-striped align-middle" id="usersTable">
+                    <thead>
+                      <tr>
+                        <th scope="col">ID</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">Display name</th>
+                        <th scope="col">Active</th>
+                        <th scope="col" class="text-end">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-5">
+            <div class="card mb-3">
+              <div class="card-header"><i class="bi bi-person-plus"></i> Create user</div>
+              <div class="card-body">
+                <form id="createUserForm" class="row g-3">
+                  <div class="col-12">
+                    <label class="form-label">Email</label>
+                    <input class="form-control" type="email" name="email" required />
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label">Display name</label>
+                    <input class="form-control" type="text" name="displayName" />
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label">Password</label>
+                    <input class="form-control" type="password" name="password" required />
+                  </div>
+                  <div class="col-12 d-grid">
+                    <button class="btn btn-success" type="submit"><i class="bi bi-check2-circle"></i> Create</button>
+                  </div>
+                  <div class="col-12">
+                    <div class="alert alert-danger d-none" id="createUserError"></div>
+                  </div>
+                </form>
+              </div>
+            </div>
+            <!-- Per-user actions are now available directly in the Users table. Removed old Manage user and User profile blocks per requirements. -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Groups Tab -->
+      <div class="tab-pane fade" id="groups" role="tabpanel">
+        <div class="row g-3">
+          <div class="col-lg-7">
+            <div class="card">
+              <div class="card-header"><i class="bi bi-people-fill"></i> Groups</div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-striped align-middle" id="groupsTable">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th class="text-end">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-5">
+            <div class="card mb-3">
+              <div class="card-header"><i class="bi bi-plus-circle"></i> Create group</div>
+              <div class="card-body">
+                <form id="createGroupForm" class="row g-3">
+                  <div class="col-12">
+                    <label class="form-label">Name</label>
+                    <input class="form-control" type="text" name="name" required />
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label">Description</label>
+                    <input class="form-control" type="text" name="description" />
+                  </div>
+                  <div class="col-12 d-grid">
+                    <button class="btn btn-success" type="submit"><i class="bi bi-check2-circle"></i> Create</button>
+                  </div>
+                  <div class="col-12">
+                    <div class="alert alert-danger d-none" id="createGroupError"></div>
+                  </div>
+                </form>
+              </div>
+            </div>
+            <!-- Manage group block removed: actions are available per row in the Groups table -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Roles Tab -->
+      <div class="tab-pane fade" id="roles" role="tabpanel">
+        <div class="row g-3">
+          <div class="col-lg-7">
+            <div class="card">
+              <div class="card-header"><i class="bi bi-shield"></i> Roles</div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-striped align-middle" id="rolesTable">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Key</th>
+                        <th>System</th>
+                        <th>Pull</th>
+                        <th>Push</th>
+                        <th class="text-end">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-5">
+            <div class="card mb-3">
+              <div class="card-header"><i class="bi bi-plus-circle"></i> Create role</div>
+              <div class="card-body">
+                <form id="createRoleForm" class="row g-3">
+                  <div class="col-12">
+                    <label class="form-label">Name</label>
+                    <input class="form-control" type="text" name="name" required />
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label">Key (optional)</label>
+                    <input class="form-control" type="text" name="key" />
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label">Description</label>
+                    <input class="form-control" type="text" name="description" />
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label">Permissions</label>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="permPull" name="canPull">
+                      <label class="form-check-label" for="permPull">Pull (view bucket list, list/download objects)</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="permPush" name="canPush">
+                      <label class="form-check-label" for="permPush">Push (manage buckets, upload/delete objects)</label>
+                    </div>
+                  </div>
+                  <div class="col-12 d-grid">
+                    <button class="btn btn-success" type="submit"><i class="bi bi-check2-circle"></i> Create</button>
+                  </div>
+                  <div class="col-12">
+                    <div class="alert alert-danger d-none" id="createRoleError"></div>
+                  </div>
+                </form>
+              </div>
+            </div>
+            <!-- Manage role block removed: actions are available per row in the Roles table -->
+          </div>
+        </div>
+      </div>
+
+      <!-- User Role Assignments Tab -->
+      <div class="tab-pane fade" id="assignments" role="tabpanel">
+        <div class="row g-3">
+          <div class="col-lg-7">
+            <div class="card">
+              <div class="card-header"><i class="bi bi-person-badge"></i> User role assignments</div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-striped align-middle" id="assignTable">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>User</th>
+                        <th>Role</th>
+                        <th class="text-end">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-5">
+            <div class="card">
+              <div class="card-header"><i class="bi bi-link-45deg"></i> Assign role to user</div>
+              <div class="card-body">
+                <form id="assignRoleForm" class="row g-3">
+                  <div class="col-12">
+                    <label class="form-label">User</label>
+                    <select class="form-select" name="userId" id="userSelect" required></select>
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label">Role</label>
+                    <select class="form-select" name="roleId" id="roleSelect" required></select>
+                  </div>
+                  <div class="col-12 d-grid">
+                    <button class="btn btn-primary" type="submit"><i class="bi bi-plus"></i> Assign</button>
+                  </div>
+                  <div class="col-12">
+                    <div class="alert alert-danger d-none" id="assignError"></div>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Group Memberships Tab -->
+      <div class="tab-pane fade" id="memberships" role="tabpanel">
+        <div class="row g-3">
+          <div class="col-lg-7">
+            <div class="card">
+              <div class="card-header"><i class="bi bi-person-lines-fill"></i> Group memberships</div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-striped align-middle" id="membershipsTable">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>User</th>
+                        <th>Group</th>
+                        <th class="text-end">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-5">
+            <div class="card">
+              <div class="card-header"><i class="bi bi-person-plus-fill"></i> Add user to group</div>
+              <div class="card-body">
+                <form id="addMembershipForm" class="row g-3">
+                  <div class="col-12">
+                    <label class="form-label">User</label>
+                    <select class="form-select" name="userId" id="memberUserSelect" required></select>
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label">Group</label>
+                    <select class="form-select" name="groupId" id="memberGroupSelect" required></select>
+                  </div>
+                  <div class="col-12 d-grid">
+                    <button class="btn btn-primary" type="submit"><i class="bi bi-plus"></i> Add</button>
+                  </div>
+                  <div class="col-12">
+                    <div class="alert alert-danger d-none" id="membershipError"></div>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Group Role Assignments Tab -->
+      <div class="tab-pane fade" id="groupRoles" role="tabpanel">
+        <div class="row g-3">
+          <div class="col-lg-7">
+            <div class="card">
+              <div class="card-header"><i class="bi bi-people"></i> Group role assignments</div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-striped align-middle" id="groupRolesTable">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Group</th>
+                        <th>Role</th>
+                        <th class="text-end">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-5">
+            <div class="card">
+              <div class="card-header"><i class="bi bi-link-45deg"></i> Assign role to group</div>
+              <div class="card-body">
+                <form id="assignGroupRoleForm" class="row g-3">
+                  <div class="col-12">
+                    <label class="form-label">Group</label>
+                    <select class="form-select" name="groupId" id="groupSelect" required></select>
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label">Role</label>
+                    <select class="form-select" name="roleId" id="groupRoleSelect" required></select>
+                  </div>
+                  <div class="col-12 d-grid">
+                    <button class="btn btn-primary" type="submit"><i class="bi bi-plus"></i> Assign</button>
+                  </div>
+                  <div class="col-12">
+                    <div class="alert alert-danger d-none" id="groupRoleAssignError"></div>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // Use server-injected values; cookies are HttpOnly and not readable by JS
+  const orgId = '{{.OrgID}}';
+  const orgName = document.getElementById('orgName') ? document.getElementById('orgName').textContent : '';
+
+  const usersTbody = document.querySelector('#usersTable tbody');
+  const rolesTbody = document.querySelector('#rolesTable tbody');
+  const groupsTbody = document.querySelector('#groupsTable tbody');
+  const assignTbody = document.querySelector('#assignTable tbody');
+  const membershipsTbody = document.querySelector('#membershipsTable tbody');
+  const groupRolesTbody = document.querySelector('#groupRolesTable tbody');
+
+  const userSelect = document.getElementById('userSelect');
+  const roleSelect = document.getElementById('roleSelect');
+  const memberUserSelect = document.getElementById('memberUserSelect');
+  const memberGroupSelect = document.getElementById('memberGroupSelect');
+  const groupSelect = document.getElementById('groupSelect');
+  const groupRoleSelect = document.getElementById('groupRoleSelect');
+  // Profile modal elements (will be created dynamically)
+  let profileModalEl, profileModal, profileForm, profileErrBox, profileOkBox;
+
+  // Password modal elements
+  let pwdModalEl, pwdModal, pwdForm, pwdErrBox, pwdUserIdInput;
+
+  // No old Manage user/User Profile side forms anymore
+
+  // Group edit modal placeholders
+  let groupModalEl, groupModal, groupForm, groupErrBox;
+
+  // Role edit modal placeholders
+  let roleModalEl, roleModal, roleForm, roleErrBox;
+
+  async function fetchJSON(url, opts){
+    const res = await fetch(url, opts);
+    if(!res.ok){
+      const txt = await res.text();
+      throw new Error(txt || res.statusText);
+    }
+    return res.json();
+  }
+
+  let users = [], roles = [], groups = [], userRoles = [], memberships = [], groupRoles = [];
+  let userById = {}, roleById = {}, groupById = {};
+
+  function rebuildIndexes(){
+    userById = {}; roleById = {}; groupById = {};
+    users.forEach(u => userById[u.id] = u);
+    roles.forEach(r => roleById[r.id] = r);
+    groups.forEach(g => groupById[g.id] = g);
+  }
+
+  function renderUsers(){
+    if(!usersTbody) return;
+    usersTbody.innerHTML = '';
+    userSelect.innerHTML = '<option value="">Select user...</option>';
+    memberUserSelect.innerHTML = '<option value="">Select user...</option>';
+    users.forEach(u => {
+      const tr = document.createElement('tr');
+      const actions = `
+        <div class="btn-group" role="group">
+          <button class="btn btn-sm btn-outline-primary" data-action="edit-profile" data-id="${u.id}"><i class="bi bi-person-badge"></i> Profile</button>
+          <button class="btn btn-sm ${u.isActive? 'btn-outline-warning':'btn-outline-success'}" data-action="toggle-active" data-id="${u.id}">
+            <i class="bi ${u.isActive? 'bi-slash-circle':'bi-check2-circle'}"></i> ${u.isActive? 'Deactivate':'Activate'}
+          </button>
+          <button class="btn btn-sm btn-outline-secondary" data-action="change-password" data-id="${u.id}"><i class="bi bi-key"></i> Password</button>
+        </div>`;
+      tr.innerHTML = `<td>${u.id}</td><td>${u.email}</td><td>${u.displayName||''}</td><td>${u.isActive? 'Yes':'No'}</td><td class="text-end">${actions}</td>`;
+      usersTbody.appendChild(tr);
+      const text = `${u.email}${u.displayName? ' ('+u.displayName+')':''}`;
+      const opt = document.createElement('option'); opt.value = u.id; opt.textContent = text; userSelect.appendChild(opt);
+      const opt2 = document.createElement('option'); opt2.value = u.id; opt2.textContent = text; memberUserSelect.appendChild(opt2);
+    });
+  }
+
+  function renderRoles(){
+    rolesTbody.innerHTML = '';
+    roleSelect.innerHTML = '<option value="">Select role...</option>';
+    groupRoleSelect.innerHTML = '<option value="">Select role...</option>';
+    roles.forEach(r => {
+      const tr = document.createElement('tr');
+      let actionsHtml = '';
+      if(!r.isSystem){
+        actionsHtml = `
+          <div class="btn-group" role="group">
+            <button class="btn btn-sm btn-outline-primary" data-action="edit-role" data-id="${r.id}"><i class="bi bi-pencil-square"></i> Edit</button>
+            <button class="btn btn-sm btn-outline-danger" data-action="delete-role" data-id="${r.id}"><i class="bi bi-trash"></i> Delete</button>
+          </div>`;
+      } else {
+        actionsHtml = `<span class="badge bg-secondary">System</span>`;
+      }
+      tr.innerHTML = `<td>${r.id}</td><td>${r.name}</td><td>${r.key||''}</td><td>${r.isSystem? 'Yes':'No'}</td><td>${r.canPull? 'Yes':'No'}</td><td>${r.canPush? 'Yes':'No'}</td><td class="text-end">${actionsHtml}</td>`;
+      rolesTbody.appendChild(tr);
+      const label = `${r.name}${r.key? ' ['+r.key+']':''}`;
+      const opt = document.createElement('option'); opt.value = r.id; opt.textContent = label; roleSelect.appendChild(opt);
+      const opt2 = document.createElement('option'); opt2.value = r.id; opt2.textContent = label; groupRoleSelect.appendChild(opt2);
+    });
+  }
+
+  function renderGroups(){
+    groupsTbody.innerHTML = '';
+    memberGroupSelect.innerHTML = '<option value="">Select group...</option>';
+    groupSelect.innerHTML = '<option value="">Select group...</option>';
+    groups.forEach(g => {
+      const tr = document.createElement('tr');
+      const actions = `
+        <div class="btn-group" role="group">
+          <button class="btn btn-sm btn-outline-primary" data-action="edit-group" data-id="${g.id}"><i class="bi bi-pencil-square"></i> Edit</button>
+          <button class="btn btn-sm btn-outline-danger" data-action="delete-group" data-id="${g.id}"><i class="bi bi-trash"></i> Delete</button>
+        </div>`;
+      tr.innerHTML = `<td>${g.id}</td><td>${g.name}</td><td>${g.description||''}</td><td class="text-end">${actions}</td>`;
+      groupsTbody.appendChild(tr);
+      const opt = document.createElement('option'); opt.value = g.id; opt.textContent = `${g.name}`; memberGroupSelect.appendChild(opt);
+      const opt2 = document.createElement('option'); opt2.value = g.id; opt2.textContent = g.name; groupSelect.appendChild(opt2);
+    });
+  }
+
+  function renderUserRoleAssignments(){
+    assignTbody.innerHTML = '';
+    userRoles.forEach(a => {
+      const user = userById[a.userId];
+      const role = roleById[a.roleId];
+      const userLabel = user ? (user.email + (user.displayName? ' ('+user.displayName+')':'')) : ('User #' + a.userId);
+      const roleLabel = role ? (role.name + (role.key? ' ['+role.key+']':'')) : ('Role #' + a.roleId);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${a.id}</td><td>${userLabel}</td><td>${roleLabel}</td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-outline-danger" data-action="delete-user-role" data-id="${a.id}"><i class="bi bi-x-circle"></i> Unassign</button>
+        </td>`;
+      assignTbody.appendChild(tr);
+    });
+  }
+
+  function renderMemberships(){
+    membershipsTbody.innerHTML = '';
+    memberships.forEach(m => {
+      const user = userById[m.userId];
+      const group = groupById[m.groupId];
+      const userLabel = user ? (user.email + (user.displayName? ' ('+user.displayName+')':'')) : ('User #' + m.userId);
+      const groupLabel = group ? group.name : ('Group #' + m.groupId);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${m.id}</td><td>${userLabel}</td><td>${groupLabel}</td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-outline-danger" data-action="delete-membership" data-id="${m.id}"><i class="bi bi-x-circle"></i> Remove</button>
+        </td>`;
+      membershipsTbody.appendChild(tr);
+    });
+  }
+
+  function renderGroupRoles(){
+    groupRolesTbody.innerHTML = '';
+    groupRoles.forEach(gr => {
+      const group = groupById[gr.groupId];
+      const role = roleById[gr.roleId];
+      const groupLabel = group ? group.name : ('Group #' + gr.groupId);
+      const roleLabel = role ? (role.name + (role.key? ' ['+role.key+']':'')) : ('Role #' + gr.roleId);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${gr.id}</td><td>${groupLabel}</td><td>${roleLabel}</td>
+        <td class=\"text-end\"> 
+          <button class=\"btn btn-sm btn-outline-danger\" data-action=\"delete-group-role\" data-id=\"${gr.id}\"><i class=\"bi bi-x-circle\"></i> Unassign</button>
+        </td>`;
+      groupRolesTbody.appendChild(tr);
+    });
+  }
+
+  async function loadAll(){
+    if(!orgId){ return; }
+    const base = `/api/v1/organizations/${orgId}`;
+    const [usersRes, groupsRes, rolesRes, userRolesRes, membershipsRes, groupRolesRes] = await Promise.all([
+      fetchJSON(base + '/users'),
+      fetchJSON(base + '/groups'),
+      fetchJSON(base + '/roles'),
+      fetchJSON(base + '/role-assignments'),
+      fetchJSON(base + '/memberships'),
+      fetchJSON(base + '/group-role-assignments')
+    ]);
+    users = usersRes; groups = groupsRes; roles = rolesRes; userRoles = userRolesRes; memberships = membershipsRes; groupRoles = groupRolesRes;
+
+    rebuildIndexes();
+    renderUsers();
+    renderGroups();
+    renderRoles();
+    renderUserRoleAssignments();
+    renderMemberships();
+    renderGroupRoles();
+  }
+
+  // Form handlers
+  const createUserForm = document.getElementById('createUserForm');
+  if(createUserForm){
+    createUserForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errBox = document.getElementById('createUserError'); errBox.classList.add('d-none');
+      try{
+        const fd = new FormData(e.target);
+        const payload = { email: fd.get('email'), displayName: fd.get('displayName'), password: fd.get('password') };
+        await fetchJSON(`/api/v1/organizations/${orgId}/users`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+        e.target.reset();
+        await loadAll();
+      }catch(err){ errBox.textContent = err.message; errBox.classList.remove('d-none'); }
+    });
+  }
+
+  // Users table actions handlers
+  function ensureProfileModal(){
+    if(profileModalEl) return;
+    profileModalEl = document.createElement('div');
+    profileModalEl.className = 'modal fade';
+    profileModalEl.innerHTML = `
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-person-badge"></i> User Profile</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="profileForm" class="row g-3">
+              <input type="hidden" name="userId" />
+              <div class="col-md-6">
+                <label class="form-label">First name</label>
+                <input class="form-control" type="text" name="firstName" />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Last name</label>
+                <input class="form-control" type="text" name="lastName" />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Phone</label>
+                <input class="form-control" type="text" name="phone" />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Avatar URL</label>
+                <input class="form-control" type="url" name="avatarUrl" />
+              </div>
+              <div class="col-12">
+                <label class="form-label">Bio</label>
+                <textarea class="form-control" rows="3" name="bio"></textarea>
+              </div>
+              <div class="col-12">
+                <div class="alert alert-danger d-none" id="profileErr"></div>
+                <div class="alert alert-success d-none" id="profileOk">Profile saved</div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-primary" id="saveProfileBtn"><i class="bi bi-save"></i> Save</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(profileModalEl);
+    profileModal = new bootstrap.Modal(profileModalEl);
+    profileForm = profileModalEl.querySelector('#profileForm');
+    profileErrBox = profileModalEl.querySelector('#profileErr');
+    profileOkBox = profileModalEl.querySelector('#profileOk');
+    profileModalEl.querySelector('#saveProfileBtn').addEventListener('click', async () => {
+      profileErrBox.classList.add('d-none'); profileOkBox.classList.add('d-none');
+      const fd = new FormData(profileForm);
+      const userId = fd.get('userId');
+      const payload = {};
+      for(const [k,v] of fd.entries()){
+        if(k !== 'userId'){ payload[k] = v; }
+      }
+      try{
+        await fetchJSON(`/api/v1/organizations/${orgId}/users/${userId}/profile`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+        profileOkBox.classList.remove('d-none');
+        await loadAll();
+      }catch(err){ profileErrBox.textContent = err.message; profileErrBox.classList.remove('d-none'); }
+    });
+  }
+  function ensurePasswordModal(){
+    if(pwdModalEl) return;
+    pwdModalEl = document.createElement('div');
+    pwdModalEl.className = 'modal fade';
+    pwdModalEl.innerHTML = `
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-key"></i> Change Password</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="pwdForm" class="row g-3">
+              <input type="hidden" name="userId" />
+              <div class="col-12">
+                <label class="form-label">New password</label>
+                <input class="form-control" type="password" name="password" required />
+              </div>
+              <div class="col-12">
+                <div class="alert alert-danger d-none" id="pwdErr"></div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-primary" id="savePwdBtn"><i class="bi bi-save"></i> Save</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(pwdModalEl);
+    pwdModal = new bootstrap.Modal(pwdModalEl);
+    pwdForm = pwdModalEl.querySelector('#pwdForm');
+    pwdErrBox = pwdModalEl.querySelector('#pwdErr');
+    pwdModalEl.querySelector('#savePwdBtn').addEventListener('click', async () => {
+      pwdErrBox.classList.add('d-none');
+      const fd = new FormData(pwdForm);
+      const userId = fd.get('userId');
+      const password = fd.get('password');
+      if(!password){ pwdErrBox.textContent = 'Password is required'; pwdErrBox.classList.remove('d-none'); return; }
+      try{
+        await fetchJSON(`/api/v1/organizations/${orgId}/users/${userId}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ password })});
+        pwdModal.hide();
+        pwdForm.reset();
+      }catch(err){ pwdErrBox.textContent = err.message; pwdErrBox.classList.remove('d-none'); }
+    });
+  }
+
+  usersTbody && usersTbody.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if(!btn) return;
+    const id = Number(btn.getAttribute('data-id'));
+    const action = btn.getAttribute('data-action');
+    if(action === 'toggle-active'){
+      try{
+        const u = userById[id];
+        await fetchJSON(`/api/v1/organizations/${orgId}/users/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ isActive: !u.isActive })});
+        await loadAll();
+      }catch(err){ alert('Failed: ' + err.message); }
+    } else if(action === 'change-password'){
+      ensurePasswordModal();
+      pwdForm.userId.value = String(id);
+      pwdForm.password.value = '';
+      pwdModal.show();
+    } else if(action === 'edit-profile'){
+      ensureProfileModal();
+      profileForm.userId.value = String(id);
+      // Load and fill
+      try{
+        const data = await fetchJSON(`/api/v1/organizations/${orgId}/users/${id}/profile`);
+        profileForm.firstName.value = data.firstName || '';
+        profileForm.lastName.value = data.lastName || '';
+        profileForm.phone.value = data.phone || '';
+        profileForm.avatarUrl.value = data.avatarUrl || '';
+        profileForm.bio.value = data.bio || '';
+      }catch(err){
+        profileForm.firstName.value = '';
+        profileForm.lastName.value = '';
+        profileForm.phone.value = '';
+        profileForm.avatarUrl.value = '';
+        profileForm.bio.value = '';
+      }
+      profileErrBox.classList.add('d-none'); profileOkBox.classList.add('d-none');
+      profileModal.show();
+    }
+  });
+
+  const createGroupForm = document.getElementById('createGroupForm');
+  if(createGroupForm){
+    createGroupForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errBox = document.getElementById('createGroupError'); errBox.classList.add('d-none');
+      try{
+        const fd = new FormData(e.target);
+        const payload = { name: fd.get('name'), description: fd.get('description') };
+        await fetchJSON(`/api/v1/organizations/${orgId}/groups`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+        e.target.reset();
+        await loadAll();
+      }catch(err){ errBox.textContent = err.message; errBox.classList.remove('d-none'); }
+    });
+  }
+
+  const createRoleForm = document.getElementById('createRoleForm');
+  if(createRoleForm){
+    createRoleForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errBox = document.getElementById('createRoleError'); errBox.classList.add('d-none');
+      try{
+        const fd = new FormData(e.target);
+        const payload = { name: fd.get('name'), key: fd.get('key'), description: fd.get('description'), canPull: fd.get('canPull')==='on', canPush: fd.get('canPush')==='on' };
+        await fetchJSON(`/api/v1/organizations/${orgId}/roles`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+        e.target.reset();
+        await loadAll();
+      }catch(err){ errBox.textContent = err.message; errBox.classList.remove('d-none'); }
+    });
+  }
+
+  const assignRoleForm = document.getElementById('assignRoleForm');
+  if(assignRoleForm){
+    assignRoleForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errBox = document.getElementById('assignError'); errBox.classList.add('d-none');
+      try{
+        const fd = new FormData(e.target);
+        const payload = { userId: Number(fd.get('userId')), roleId: Number(fd.get('roleId')) };
+        await fetchJSON(`/api/v1/organizations/${orgId}/role-assignments`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+        e.target.reset();
+        await loadAll();
+      }catch(err){ errBox.textContent = err.message; errBox.classList.remove('d-none'); }
+    });
+  }
+  // inline delete actions for assignments/memberships/group roles
+  assignTbody && assignTbody.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-action="delete-user-role"]');
+    if(!btn) return;
+    const id = btn.getAttribute('data-id');
+    if(!confirm('Unassign this role from user?')) return;
+    try{
+      const res = await fetch(`/api/v1/organizations/${orgId}/role-assignments/${id}`, { method:'DELETE' });
+      if(!res.ok){ throw new Error(await res.text() || res.statusText); }
+      await loadAll();
+    }catch(err){ alert('Failed: ' + err.message); }
+  });
+
+  const addMembershipForm = document.getElementById('addMembershipForm');
+  if(addMembershipForm){
+    addMembershipForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errBox = document.getElementById('membershipError'); errBox.classList.add('d-none');
+      try{
+        const fd = new FormData(e.target);
+        const payload = { userId: Number(fd.get('userId')), groupId: Number(fd.get('groupId')) };
+        await fetchJSON(`/api/v1/organizations/${orgId}/memberships`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+        e.target.reset();
+        await loadAll();
+      }catch(err){ errBox.textContent = err.message; errBox.classList.remove('d-none'); }
+    });
+  }
+  membershipsTbody && membershipsTbody.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-action="delete-membership"]');
+    if(!btn) return;
+    const id = btn.getAttribute('data-id');
+    if(!confirm('Remove this user from group?')) return;
+    try{
+      const res = await fetch(`/api/v1/organizations/${orgId}/memberships/${id}`, { method:'DELETE' });
+      if(!res.ok){ throw new Error(await res.text() || res.statusText); }
+      await loadAll();
+    }catch(err){ alert('Failed: ' + err.message); }
+  });
+
+  const assignGroupRoleForm = document.getElementById('assignGroupRoleForm');
+  if(assignGroupRoleForm){
+    assignGroupRoleForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errBox = document.getElementById('groupRoleAssignError'); errBox.classList.add('d-none');
+      try{
+        const fd = new FormData(e.target);
+        const payload = { groupId: Number(fd.get('groupId')), roleId: Number(fd.get('roleId')) };
+        await fetchJSON(`/api/v1/organizations/${orgId}/group-role-assignments`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+        e.target.reset();
+        await loadAll();
+      }catch(err){ errBox.textContent = err.message; errBox.classList.remove('d-none'); }
+    });
+  }
+  groupRolesTbody && groupRolesTbody.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-action="delete-group-role"]');
+    if(!btn) return;
+    const id = btn.getAttribute('data-id');
+    if(!confirm('Unassign this role from group?')) return;
+    try{
+      const res = await fetch(`/api/v1/organizations/${orgId}/group-role-assignments/${id}`, { method:'DELETE' });
+      if(!res.ok){ throw new Error(await res.text() || res.statusText); }
+      await loadAll();
+    }catch(err){ alert('Failed: ' + err.message); }
+  });
+
+  // Group edit modal and Roles edit modal, plus table action handlers
+  function ensureGroupModal(){
+    if(groupModalEl) return;
+    groupModalEl = document.createElement('div');
+    groupModalEl.className = 'modal fade';
+    groupModalEl.innerHTML = `
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-pencil-square"></i> Edit Group</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="groupForm" class="row g-3">
+              <input type="hidden" name="groupId" />
+              <div class="col-12">
+                <label class="form-label">Name</label>
+                <input class="form-control" type="text" name="name" required />
+              </div>
+              <div class="col-12">
+                <label class="form-label">Description</label>
+                <input class="form-control" type="text" name="description" />
+              </div>
+              <div class="col-12"><div class="alert alert-danger d-none" id="groupErr"></div></div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-primary" id="saveGroupBtn"><i class="bi bi-save"></i> Save</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(groupModalEl);
+    groupModal = new bootstrap.Modal(groupModalEl);
+    groupForm = groupModalEl.querySelector('#groupForm');
+    groupErrBox = groupModalEl.querySelector('#groupErr');
+    groupModalEl.querySelector('#saveGroupBtn').addEventListener('click', async () => {
+      groupErrBox.classList.add('d-none');
+      const fd = new FormData(groupForm);
+      const gid = fd.get('groupId');
+      const payload = { name: fd.get('name'), description: fd.get('description') };
+      try{
+        await fetchJSON(`/api/v1/organizations/${orgId}/groups/${gid}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+        groupModal.hide();
+        await loadAll();
+      }catch(err){ groupErrBox.textContent = err.message; groupErrBox.classList.remove('d-none'); }
+    });
+  }
+  function ensureRoleModal(){
+    if(roleModalEl) return;
+    roleModalEl = document.createElement('div');
+    roleModalEl.className = 'modal fade';
+    roleModalEl.innerHTML = `
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-shield"></i> Edit Role</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="roleForm" class="row g-3">
+              <input type="hidden" name="roleId" />
+              <div class="col-12">
+                <label class="form-label">Name</label>
+                <input class="form-control" type="text" name="name" required />
+              </div>
+              <div class="col-12">
+                <label class="form-label">Key</label>
+                <input class="form-control" type="text" name="key" />
+              </div>
+              <div class="col-12">
+                <label class="form-label">Description</label>
+                <input class="form-control" type="text" name="description" />
+              </div>
+              <div class="col-12">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="canPull" id="editRolePull">
+                  <label class="form-check-label" for="editRolePull">Pull</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="canPush" id="editRolePush">
+                  <label class="form-check-label" for="editRolePush">Push</label>
+                </div>
+              </div>
+              <div class="col-12"><div class="alert alert-danger d-none" id="roleErr"></div></div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-primary" id="saveRoleBtn"><i class="bi bi-save"></i> Save</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(roleModalEl);
+    roleModal = new bootstrap.Modal(roleModalEl);
+    roleForm = roleModalEl.querySelector('#roleForm');
+    roleErrBox = roleModalEl.querySelector('#roleErr');
+    roleModalEl.querySelector('#saveRoleBtn').addEventListener('click', async () => {
+      roleErrBox.classList.add('d-none');
+      const fd = new FormData(roleForm);
+      const rid = fd.get('roleId');
+      const payload = { name: fd.get('name'), key: fd.get('key'), description: fd.get('description'), canPull: fd.get('canPull')==='on', canPush: fd.get('canPush')==='on' };
+      try{
+        await fetchJSON(`/api/v1/organizations/${orgId}/roles/${rid}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+        roleModal.hide();
+        await loadAll();
+      }catch(err){ roleErrBox.textContent = err.message; roleErrBox.classList.remove('d-none'); }
+    });
+  }
+
+  // Table action handlers for groups
+  groupsTbody && groupsTbody.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if(!btn) return;
+    const id = Number(btn.getAttribute('data-id'));
+    const action = btn.getAttribute('data-action');
+    if(action === 'edit-group'){
+      ensureGroupModal();
+      const g = groupById[id];
+      groupForm.groupId.value = String(id);
+      groupForm.name.value = g?.name || '';
+      groupForm.description.value = g?.description || '';
+      groupErrBox.classList.add('d-none');
+      groupModal.show();
+    } else if(action === 'delete-group'){
+      if(!confirm('Delete this group?')) return;
+      try{
+        const res = await fetch(`/api/v1/organizations/${orgId}/groups/${id}`, { method: 'DELETE' });
+        if(!res.ok){ throw new Error(await res.text() || res.statusText); }
+        await loadAll();
+      }catch(err){ alert('Failed: ' + err.message); }
+    }
+  });
+
+  // Table action handlers for roles (non-system only)
+  rolesTbody && rolesTbody.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if(!btn) return;
+    const id = Number(btn.getAttribute('data-id'));
+    const action = btn.getAttribute('data-action');
+    const role = roleById[id];
+    if(role?.isSystem){ alert('System roles cannot be modified.'); return; }
+    if(action === 'edit-role'){
+      ensureRoleModal();
+      roleForm.roleId.value = String(id);
+      roleForm.name.value = role?.name || '';
+      roleForm.key.value = role?.key || '';
+      roleForm.description.value = role?.description || '';
+      roleForm.canPull.checked = !!role?.canPull;
+      roleForm.canPush.checked = !!role?.canPush;
+      roleErrBox.classList.add('d-none');
+      roleModal.show();
+    } else if(action === 'delete-role'){
+      if(!confirm('Delete this role?')) return;
+      try{
+        const res = await fetch(`/api/v1/organizations/${orgId}/roles/${id}`, { method:'DELETE' });
+        if(!res.ok){ throw new Error(await res.text() || res.statusText); }
+        await loadAll();
+      }catch(err){ alert('Failed: ' + err.message); }
+    }
+  });
+
+  // User profile logic
+  // Old loadProfileIntoForm removed; handled in modal when opening
+
+  // Profile form removed; actions handled via per-user modal
+
+  // Side manage blocks removed in favor of per-row actions and modals
+
+  loadAll().catch(err => console.error(err));
+})();
+</script>
+{{template "base_bottom" .}}

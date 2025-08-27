@@ -1,0 +1,109 @@
+{{template "base_top" .}}
+<div class="row">
+  <div class="col-lg-6">
+    <div class="d-flex align-items-center mb-3">
+      <i class="bi bi-hdd-stack display-6 me-2"></i>
+      <h1 class="h3 mb-0">Buckets Management</h1>
+    </div>
+    <div id="alert" class="alert d-none" role="alert"></div>
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-plus-circle"></i> New S3 Storage</div>
+      <div class="card-body">
+        <form id="createForm" class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Name</label>
+            <input name="name" class="form-control" type="text" placeholder="My S3" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Bucket</label>
+            <input name="bucket" class="form-control" type="text" placeholder="my-bucket" required>
+          </div>
+          <div class="col-md-8">
+            <label class="form-label">Endpoint</label>
+            <input name="endpoint" class="form-control" type="text" placeholder="https://s3.amazonaws.com" required>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Region</label>
+            <input name="region" class="form-control" type="text" placeholder="us-east-1">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Access Key</label>
+            <input name="accessKey" class="form-control" type="text" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Secret Key</label>
+            <input name="secretKey" class="form-control" type="password" required>
+          </div>
+          <div class="col-12 form-check">
+            <input class="form-check-input" type="checkbox" id="useSSL" name="useSSL" checked>
+            <label class="form-check-label" for="useSSL">Use SSL</label>
+          </div>
+          <div class="col-12">
+            <button type="submit" class="btn btn-success"><i class="bi bi-plus-circle"></i> Create</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-list-ul"></i> Existing storages</div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-sm table-striped align-middle">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th>Bucket</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="storagesBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<span id="orgMeta" data-org-id="{{.OrgID}}" class="d-none"></span>
+<script>
+(function(){
+  const ORG_ID = (document.getElementById('orgMeta').dataset.orgId || null);
+  const alertBox = document.getElementById('alert');
+  function showAlert(type, msg){ alertBox.className='alert alert-'+type; alertBox.textContent=msg; }
+  function formToJSON(form){
+    const o = {}; new FormData(form).forEach((v,k)=>{ o[k]=v }); o.useSSL = document.getElementById('useSSL').checked; return o;
+  }
+  async function loadStorages(){
+    const res = await fetch(`/api/v1/organizations/${ORG_ID}/storages`);
+    const tbody = document.getElementById('storagesBody'); tbody.innerHTML='';
+    if(!res.ok){ showAlert('danger','Failed to load storages'); return; }
+    const list = await res.json();
+    if(!Array.isArray(list) || list.length===0){ tbody.innerHTML = '<tr><td colspan="4" class="text-muted text-center">No storages</td></tr>'; return; }
+    list.forEach((s, i)=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${i+1}</td><td>${s.name||''}</td><td><code>${s.bucket||''}</code></td>
+        <td>
+          <a class="btn btn-sm btn-outline-secondary" href="/buckets/browse/${s.id}"><i class="bi bi-folder2-open"></i></a>
+          <button class="btn btn-sm btn-outline-danger ms-1" data-id="${s.id}"><i class="bi bi-trash"></i></button>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+    tbody.onclick = async (e)=>{
+      const btn = e.target.closest('button[data-id]'); if(!btn) return; const id = btn.getAttribute('data-id');
+      if(!confirm('Delete this storage?')) return;
+      const r = await fetch(`/api/v1/organizations/${ORG_ID}/storages/${id}`, { method:'DELETE' });
+      if(r.ok){ showAlert('success','Deleted'); loadStorages(); } else { showAlert('danger','Delete failed'); }
+    };
+  }
+  document.getElementById('createForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const body = formToJSON(e.target);
+    const res = await fetch(`/api/v1/organizations/${ORG_ID}/storages`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    if(res.ok){ showAlert('success','Created'); e.target.reset(); document.getElementById('useSSL').checked=true; loadStorages(); } else { const t=await res.text(); showAlert('danger','Create failed: '+t); }
+  });
+  if(ORG_ID){ loadStorages(); }
+})();
+</script>
+{{template "base_bottom" .}}

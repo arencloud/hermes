@@ -1,0 +1,145 @@
+{{template "base_top" .}}
+<div class="row">
+  <div class="col-12 col-lg-8">
+    <div class="d-flex align-items-center mb-3">
+      <i class="bi bi-person-lines-fill display-6 me-2"></i>
+      <h1 class="h3 mb-0">My Profile</h1>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-person-badge"></i> Profile information</div>
+      <div class="card-body">
+        <form id="selfProfileForm" class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">First name</label>
+            <input class="form-control" type="text" name="firstName" />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Last name</label>
+            <input class="form-control" type="text" name="lastName" />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Phone</label>
+            <input class="form-control" type="text" name="phone" />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Avatar URL</label>
+            <input class="form-control" type="url" name="avatarUrl" />
+          </div>
+          <div class="col-12">
+            <label class="form-label">Bio</label>
+            <textarea class="form-control" rows="3" name="bio"></textarea>
+          </div>
+          <div class="col-12">
+            <div class="alert alert-danger d-none" id="selfProfileErr"></div>
+            <div class="alert alert-success d-none" id="selfProfileOk">Profile saved</div>
+          </div>
+          <div class="col-12 d-grid">
+            <button class="btn btn-primary" type="submit"><i class="bi bi-save"></i> Save Profile</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><i class="bi bi-key"></i> Change password</div>
+      <div class="card-body">
+        <form id="selfPasswordForm" class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">New password</label>
+            <input class="form-control" type="password" name="password" required />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Confirm password</label>
+            <input class="form-control" type="password" name="confirm" required />
+          </div>
+          <div class="col-12">
+            <div class="alert alert-danger d-none" id="selfPwdErr"></div>
+            <div class="alert alert-success d-none" id="selfPwdOk">Password changed</div>
+          </div>
+          <div class="col-12 d-grid">
+            <button class="btn btn-warning" type="submit"><i class="bi bi-key"></i> Change Password</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // Values rendered from server
+  const orgId = '{{.OrgID}}';
+  const email = '{{.Username}}';
+
+  async function fetchJSON(url, opts){
+    const res = await fetch(url, opts);
+    if(!res.ok){ throw new Error(await res.text() || res.statusText); }
+    return res.json();
+  }
+
+  let selfUserId = null;
+  const profileForm = document.getElementById('selfProfileForm');
+  const profileErr = document.getElementById('selfProfileErr');
+  const profileOk = document.getElementById('selfProfileOk');
+  const pwdForm = document.getElementById('selfPasswordForm');
+  const pwdErr = document.getElementById('selfPwdErr');
+  const pwdOk = document.getElementById('selfPwdOk');
+
+  async function resolveSelfUser(){
+    const users = await fetchJSON(`/api/v1/organizations/${orgId}/users`);
+    const me = users.find(u => u.email === email);
+    if(!me){ throw new Error('Current user not found'); }
+    selfUserId = me.id;
+    return me.id;
+  }
+  async function loadProfile(){
+    try{
+      const data = await fetchJSON(`/api/v1/organizations/${orgId}/users/${selfUserId}/profile`);
+      profileForm.firstName.value = data.firstName || '';
+      profileForm.lastName.value = data.lastName || '';
+      profileForm.phone.value = data.phone || '';
+      profileForm.avatarUrl.value = data.avatarUrl || '';
+      profileForm.bio.value = data.bio || '';
+    }catch(err){
+      profileForm.firstName.value = '';
+      profileForm.lastName.value = '';
+      profileForm.phone.value = '';
+      profileForm.avatarUrl.value = '';
+      profileForm.bio.value = '';
+    }
+  }
+
+  profileForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    profileErr.classList.add('d-none'); profileOk.classList.add('d-none');
+    const fd = new FormData(profileForm);
+    const payload = {};
+    for(const [k,v] of fd.entries()){ payload[k] = v; }
+    try{
+      await fetchJSON(`/api/v1/organizations/${orgId}/users/${selfUserId}/profile`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+      profileOk.classList.remove('d-none');
+    }catch(err){ profileErr.textContent = err.message; profileErr.classList.remove('d-none'); }
+  });
+
+  pwdForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    pwdErr.classList.add('d-none'); pwdOk.classList.add('d-none');
+    const fd = new FormData(pwdForm);
+    const p = fd.get('password');
+    const c = fd.get('confirm');
+    if(!p || p !== c){ pwdErr.textContent = 'Passwords do not match'; pwdErr.classList.remove('d-none'); return; }
+    try{
+      await fetchJSON(`/api/v1/organizations/${orgId}/users/${selfUserId}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ password: p })});
+      pwdOk.classList.remove('d-none');
+      pwdForm.reset();
+    }catch(err){ pwdErr.textContent = err.message; pwdErr.classList.remove('d-none'); }
+  });
+
+  resolveSelfUser().then(loadProfile).catch(err => {
+    profileErr.textContent = err.message;
+    profileErr.classList.remove('d-none');
+  });
+})();
+</script>
+{{template "base_bottom" .}}

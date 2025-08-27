@@ -1,81 +1,32 @@
-# Makefile for Hermes
-# Usage examples:
-#   make up               # build image and start via podman-compose
-#   make down             # stop and remove containers
-#   make logs             # tail logs
-#   make build            # build Go binary locally
-#   make run              # run local binary on PORT
-#   make health           # check container health endpoint
-#   make open             # open app in browser
+APP_NAME ?= hermes
+IMAGE ?= quay.io/egevorky/$(APP_NAME):latest
+GO ?= go
 
-# --- Config ---
-PROJECT_NAME := hermes
-COMPOSE := podman-compose
-PORT ?= 8080
-HERMES_SESSION_SECRET ?= dev-secret-change-me
-BROWSER ?= xdg-open
+.PHONY: build run clean deps provision deprovision image-build image-push full-clean
 
-# Default target
-.PHONY: help
-help:
-	@echo "Targets:"
-	@echo "  make up        - Build image and start containers (detached)"
-	@echo "  make down      - Stop and remove containers"
-	@echo "  make restart   - Restart containers"
-	@echo "  make logs      - Tail service logs"
-	@echo "  make ps        - Show compose services"
-	@echo "  make health    - Curl /healthz from host"
-	@echo "  make open      - Open http://localhost:$(PORT)"
-	@echo "  make build     - Go build local binary to bin/"
-	@echo "  make run       - Run local binary with PORT=$(PORT)"
-	@echo "  make tidy      - go mod tidy"
-	@echo "  make clean     - Compose down with volumes"
-
-# --- Local dev ---
-.PHONY: build
 build:
-	@echo "Building Go binary..."
-	go build -o bin/$(PROJECT_NAME) ./cmd/$(PROJECT_NAME)
+	$(GO) mod tidy
+	$(GO) build -o bin/$(APP_NAME) ./cmd/hermes
 
-.PHONY: run
 run: build
-	@echo "Running local binary on :$(PORT)"
-	PORT=$(PORT) ./bin/$(PROJECT_NAME)
+	DB_HOST=localhost DB_PORT=5432 DB_USER=postgres DB_PASSWORD=postgres DB_NAME=hermes \
+		./bin/$(APP_NAME)
 
-.PHONY: tidy
-tidy:
-	go mod tidy
-
-# --- Container orchestration (podman-compose) ---
-.PHONY: up
-yup:  ## alias for up (common typo)
-up:
-	HERMES_SESSION_SECRET=$(HERMES_SESSION_SECRET) PORT=$(PORT) $(COMPOSE) up -d --build
-
-.PHONY: down
-down:
-	$(COMPOSE) down
-
-.PHONY: clean
 clean:
-	$(COMPOSE) down -v
+	rm -rf bin
 
-.PHONY: restart
-restart:
-	$(COMPOSE) restart || ( $(COMPOSE) up -d )
+provision:
+	podman-compose up -d
 
-.PHONY: logs
-logs:
-	podman logs -f $(PROJECT_NAME)
+deprovision:
+	podman-compose down -v --remove-orphans
 
-.PHONY: ps
-ps:
-	$(COMPOSE) ps
+image-build:
+	podman build -f Containerfile -t $(IMAGE) .
 
-.PHONY: health
-health:
-	curl -sf http://127.0.0.1:$(PORT)/healthz && echo ok || (echo "health check failed" && exit 1)
+image-push: image-build
+	podman push $(IMAGE)
+	$(MAKE) full-clean
 
-.PHONY: open
-open:
-	$(BROWSER) http://localhost:$(PORT) >/dev/null 2>&1 || true
+full-clean: deprovision clean
+	podman image prune -f

@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hermes-config
+  labels:
+    app.kubernetes.io/name: hermes
+    app.kubernetes.io/part-of: hermes
+    app.kubernetes.io/component: web
+data:
+  PORT: "8080"
+  HERMES_LOG_FORMAT: "json"
+  HERMES_LOG_LEVEL: "info"
+  # Set DB_HOST to your database service
+  DB_HOST: "postgresql"
+  DB_PORT: "5432"
+  DB_USER: "postgres"
+  DB_NAME: "hermes"
+  DB_SSLMODE: "disable"
