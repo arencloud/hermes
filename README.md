@@ -160,6 +160,7 @@ The deployment config maps set sensible defaults for production (JSON/info). You
 - ORM: GORM (PostgreSQL)
 - UI: Bootstrap 5 + Bootstrap Icons
 - Object storage: MinIO / S3 compatible
+- Secret scanning: Gitleaks in CI (requires GitHub Secret `GITLEAKS_LICENSE`; obtain a license at https://gitleaks.io)
 
 
 ## 📄 License
