@@ -24,7 +24,7 @@ spec:
         # Do not set runAsUser to allow OpenShift to assign an arbitrary UID
       containers:
         - name: hermes
-          image: eduard1001171985/hermes:v1.1.0
+          image: eduard1001171985/hermes:v1.2.0
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

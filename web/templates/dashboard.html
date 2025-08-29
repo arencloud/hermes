@@ -6,16 +6,22 @@
       <p class="mb-0 text-muted">This is your dashboard. Use the navigation bar to access features.</p>
     </div>
   </div>
+  {{if or .CanPull .CanPush}}
   <div class="col-md-6">
     <div class="card mb-3">
       <div class="card-header"><i class="bi bi-hdd-stack"></i> Buckets</div>
       <div class="card-body">
         <p class="card-text">Manage storage buckets and objects.</p>
+        {{if .CanPush}}
         <a class="btn btn-primary" href="/buckets"><i class="bi bi-gear"></i> Manage</a>
+        {{end}}
+        {{if .CanPull}}
         <a class="btn btn-outline-secondary" href="/buckets/list"><i class="bi bi-list-ul"></i> View list</a>
+        {{end}}
       </div>
     </div>
   </div>
+  {{end}}
   <div class="col-md-6">
     <div class="card mb-3">
       <div class="card-header"><i class="bi bi-journal-code"></i> API</div>

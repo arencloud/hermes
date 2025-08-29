@@ -6,7 +6,7 @@ Hermes lets organizations manage users, groups, and roles; connect to S3‑compa
 
 [![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?logo=go)](go.mod)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Docker Image](https://img.shields.io/badge/image-eduard1001171985%2Fhermes%3Av1.1.0-2496ED?logo=docker)](https://hub.docker.com/r/eduard1001171985/hermes)
+[![Docker Image](https://img.shields.io/badge/image-eduard1001171985%2Fhermes%3Av1.2.0-2496ED?logo=docker)](https://hub.docker.com/r/eduard1001171985/hermes)
 [![Status](https://img.shields.io/badge/status-active-success.svg)](#)
 
 
@@ -75,6 +75,8 @@ Then open http://localhost:8080
 ## 🧭 First‑time Setup
 - Click "Sign up" to create your first Organization and Admin user.
 - The initial user is assigned the system "Super Admin" role, which automatically enables both Pull and Push capabilities.
+- Alternatively, users can sign up to join an existing organization. Such users are created without any roles or permissions until a Super Admin assigns them.
+- Super Admins will see an info banner on the Admin page indicating how many users currently lack role assignments and can use the Users & Roles page to grant access.
 - After you sign in, you’ll see:
   - Dashboard
   - Buckets (if you have Push)
@@ -118,7 +120,7 @@ Common tasks:
 - Run: `make run`
 - Clean: `make clean`
 - Container image (Podman): `make image-build` / `make image-push`
-- Provision deps (Podman Compose): `make provision` / `make deprovision`
+- Provision deps (Podman Compose): `make provision` / `make deprovision` (full cleanup: stops/removes stack, prunes volumes and all images, removes local hermes:dev)
 
 Project layout:
 - `cmd/hermes/` – application entrypoint
@@ -198,7 +200,7 @@ OpenShift/OKD (with kustomize):
 - This creates a Service and a Route (edge-terminated TLS by default). You can set a custom hostname by editing hermes-route.yaml.
 
 Image
-- The manifests reference the published Docker image `eduard1001171985/hermes:v1.1.0`. Adjust the image name/tag to suit your registry, or use kustomize images to override.
+- The manifests reference the published Docker image `eduard1001171985/hermes:v1.2.0`. Adjust the image name/tag to suit your registry, or use kustomize images to override.
 
 Security
 - The image runs as non-root; OpenShift will assign an arbitrary UID. The app does not require filesystem write access.
@@ -209,7 +211,7 @@ Uninstall
 
 
 ## 🏷️ Versioning
-Hermes v1.1.0 — the app name and version appear in the UI title and Swagger.
+Hermes v1.2.0 — the app name and version appear in the UI title and Swagger.
 
 
 ## 🙋 Support & Feedback

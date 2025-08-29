@@ -19,7 +19,12 @@ provision:
 	podman-compose up -d
 
 deprovision:
-	podman-compose down -v --remove-orphans
+	- podman-compose down -v --remove-orphans
+	- podman rm -f $$(podman ps -aq) 2>/dev/null || true
+	- podman volume prune -f
+	- podman image rm -f hermes:dev 2>/dev/null || true
+	- podman image prune -a -f
+	- podman system prune -a -f
 
 image-build:
 	podman build -f Containerfile -t $(IMAGE) .

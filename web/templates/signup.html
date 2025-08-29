@@ -8,10 +8,39 @@
         <div class="alert alert-danger" role="alert">{{.Error}}</div>
         {{end}}
         <form method="post" action="/signup" novalidate>
-          <div class="mb-3">
-            <label class="form-label">Organization name</label>
-            <input class="form-control" type="text" name="organizationName" placeholder="Acme Inc" required>
+          <div class="alert alert-secondary" role="alert">
+            You can either create a new organization or join an existing one. To join, select an organization below; otherwise, fill in the new organization details.
           </div>
+          <div class="mb-3">
+            <label class="form-label">Join existing organization (optional)</label>
+            <select class="form-select" name="existingOrganizationId">
+              <option value="">Select organization...</option>
+              {{range .Organizations}}
+                <option value="{{.ID}}">{{.Name}}</option>
+              {{end}}
+            </select>
+            <small class="text-muted">If you select an existing organization, you won't have any permissions until an admin assigns them.</small>
+          </div>
+          <hr>
+          <div class="mb-3">
+            <label class="form-label">New organization name</label>
+            <input class="form-control" type="text" name="organizationName" placeholder="Acme Inc">
+          </div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Organization domain (optional)</label>
+              <input class="form-control" type="text" name="organizationDomain" placeholder="example.com">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Organization description (optional)</label>
+              <input class="form-control" type="text" name="organizationDescription" placeholder="What does your org do?">
+            </div>
+          </div>
+          <div class="form-check my-2">
+            <input class="form-check-input" type="checkbox" id="isActive" name="organizationIsActive" checked>
+            <label class="form-check-label" for="isActive">Activate organization</label>
+          </div>
+          <hr class="my-3">
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label">Display name</label>
@@ -22,9 +51,29 @@
               <input class="form-control" type="email" name="email" placeholder="jane@example.com" required>
             </div>
           </div>
-          <div class="mb-3 mt-3">
-            <label class="form-label">Password</label>
-            <input class="form-control" type="password" name="password" required>
+          <div class="row g-3 mt-3">
+            <div class="col-md-6">
+              <label class="form-label">First name (optional)</label>
+              <input class="form-control" type="text" name="firstName" placeholder="Jane">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Last name (optional)</label>
+              <input class="form-control" type="text" name="lastName" placeholder="Doe">
+            </div>
+          </div>
+          <div class="row g-3 mt-1">
+            <div class="col-md-6">
+              <label class="form-label">Phone (optional)</label>
+              <input class="form-control" type="tel" name="phone" placeholder="+1 555 123 4567">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Password</label>
+              <input class="form-control" type="password" name="password" required>
+            </div>
+          </div>
+          <div class="mb-3 mt-1">
+            <label class="form-label">Confirm password</label>
+            <input class="form-control" type="password" name="passwordConfirm" required>
           </div>
           <div class="d-grid gap-2">
             <button class="btn btn-success" type="submit"><i class="bi bi-check2-circle"></i> Create account</button>

@@ -992,7 +992,29 @@
 
   // Side manage blocks removed in favor of per-row actions and modals
 
-  loadAll().catch(err => console.error(err));
+  loadAll().then(() => {
+    // Handle deep links: ?tab=assignments|memberships and optional ?userId=123
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+    const userId = params.get('userId');
+    if(tab){
+      const tabBtn = document.querySelector(`button[data-bs-target="#${tab}"]`);
+      if(tabBtn){
+        new bootstrap.Tab(tabBtn).show();
+      }
+    }
+    if(userId){
+      // Preselect user in forms
+      if(userSelect){ userSelect.value = String(userId); }
+      if(memberUserSelect){ memberUserSelect.value = String(userId); }
+      // Scroll the right form into view
+      if(tab === 'assignments'){
+        document.getElementById('assignRoleForm')?.scrollIntoView({behavior:'smooth', block:'start'});
+      } else if(tab === 'memberships'){
+        document.getElementById('addMembershipForm')?.scrollIntoView({behavior:'smooth', block:'start'});
+      }
+    }
+  }).catch(err => console.error(err));
 })();
 </script>
 {{template "base_bottom" .}}

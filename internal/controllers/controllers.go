@@ -429,12 +429,114 @@ func DeleteGroupRoleAssignment(db *gorm.DB) gin.HandlerFunc {
 	return deleteScoped[models.GroupRole](db)
 }
 
-// Storages (config CRUD)
+// Storages (config CRUD with ownership enforcement)
 func ListStorages(db *gorm.DB) gin.HandlerFunc  { return listScoped[models.S3Storage](db) }
-func CreateStorage(db *gorm.DB) gin.HandlerFunc { return createScoped[models.S3Storage](db) }
+
+func CreateStorage(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		orgID, err := orgIDParam(c)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		var body models.S3Storage
+		if err := c.ShouldBindJSON(&body); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		body.OrganizationID = orgID
+		// set ownership from current cookie user within org
+		if email, err := c.Cookie("user"); err == nil && email != "" {
+			var u models.User
+			if db.Where("organization_id = ? AND email = ?", orgID, email).First(&u).Error == nil {
+				body.CreatedByUserID = u.ID
+				body.CreatedByEmail = u.Email
+			}
+		}
+		if err := db.Create(&body).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusCreated, body)
+	}
+}
+
 func GetStorage(db *gorm.DB) gin.HandlerFunc    { return getScoped[models.S3Storage](db) }
-func UpdateStorage(db *gorm.DB) gin.HandlerFunc { return updateScoped[models.S3Storage](db) }
-func DeleteStorage(db *gorm.DB) gin.HandlerFunc { return deleteScoped[models.S3Storage](db) }
+
+func UpdateStorage(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		orgID, err := orgIDParam(c)
+		if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()}); return }
+		id, err := idParam(c)
+		if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()}); return }
+		// load existing to check ownership
+		var existing models.S3Storage
+		if err := db.Where("organization_id = ?", orgID).First(&existing, id).Error; err != nil {
+			status := http.StatusNotFound
+			if err != gorm.ErrRecordNotFound { status = http.StatusInternalServerError }
+			c.JSON(status, gin.H{"error": err.Error()})
+			return
+		}
+		isAdmin := false
+		if role, _ := c.Cookie("role"); role == "admin" { isAdmin = true }
+		if !isAdmin {
+			// determine current user
+			email, _ := c.Cookie("user")
+			var u models.User
+			if err := db.Where("organization_id = ? AND email = ?", orgID, email).First(&u).Error; err != nil || u.ID != existing.CreatedByUserID {
+				c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+				return
+			}
+		}
+		var body map[string]any
+		if err := c.ShouldBindJSON(&body); err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()}); return }
+		// enforce scope and prevent changing ownership
+		body["organization_id"] = orgID
+		delete(body, "created_by_user_id")
+		delete(body, "created_by_email")
+		if err := db.Model(&models.S3Storage{}).Where("id = ? AND organization_id = ?", id, orgID).Updates(body).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		var updated models.S3Storage
+		if err := db.Where("organization_id = ?", orgID).First(&updated, id).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, updated)
+	}
+}
+
+func DeleteStorage(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		orgID, err := orgIDParam(c)
+		if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()}); return }
+		id, err := idParam(c)
+		if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()}); return }
+		var existing models.S3Storage
+		if err := db.Where("organization_id = ?", orgID).First(&existing, id).Error; err != nil {
+			status := http.StatusNotFound
+			if err != gorm.ErrRecordNotFound { status = http.StatusInternalServerError }
+			c.JSON(status, gin.H{"error": err.Error()})
+			return
+		}
+		isAdmin := false
+		if role, _ := c.Cookie("role"); role == "admin" { isAdmin = true }
+		if !isAdmin {
+			email, _ := c.Cookie("user")
+			var u models.User
+			if err := db.Where("organization_id = ? AND email = ?", orgID, email).First(&u).Error; err != nil || u.ID != existing.CreatedByUserID {
+				c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+				return
+			}
+		}
+		if err := db.Delete(&existing).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.Status(http.StatusNoContent)
+	}
+}
 
 // Generic scoped handlers using Go generics
 

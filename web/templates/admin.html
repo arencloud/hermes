@@ -6,6 +6,37 @@
       <h1 class="h3 mb-0">Administration</h1>
     </div>
     <div class="alert alert-warning"><i class="bi bi-exclamation-triangle"></i> Admin-only section.</div>
+
+    {{if .PendingUsers}}
+    <div class="alert alert-info" role="alert">
+      <div class="d-flex align-items-start">
+        <i class="bi bi-person-exclamation me-2 fs-5"></i>
+        <div>
+          <div>
+            There are <strong>{{.PendingUsers}}</strong> user(s) in your organization waiting for permissions.
+            You can add them to a group or assign a role directly.
+            <a class="ms-2" href="/admin/users-roles?tab=assignments">Open Users & Roles</a>
+          </div>
+          {{if .PendingList}}
+          <ul class="mt-2 mb-0">
+            {{range .PendingList}}
+              <li>
+                {{if .DisplayName}}{{.DisplayName}} — {{end}}{{.Email}}
+                <a class="ms-1" href="/admin/users-roles?tab=assignments&userId={{.ID}}">Assign role</a>
+                ·
+                <a href="/admin/users-roles?tab=memberships&userId={{.ID}}">Add to group</a>
+              </li>
+            {{end}}
+          </ul>
+          {{if gt .PendingUsers 5}}
+            <div class="mt-1"><a href="/admin/users-roles?tab=users">See all pending users</a></div>
+          {{end}}
+          {{end}}
+        </div>
+      </div>
+    </div>
+    {{end}}
+
     <div class="row g-3">
       <div class="col-md-6">
         <div class="card h-100">
@@ -21,7 +52,7 @@
           <div class="card-header"><i class="bi bi-building"></i> Organization</div>
           <div class="card-body">
             <p>View and edit organization settings.</p>
-            <a class="btn btn-outline-secondary disabled" aria-disabled="true"><i class="bi bi-building"></i> Coming soon</a>
+            <a class="btn btn-outline-secondary" href="/admin/org"><i class="bi bi-building"></i> Organization Settings</a>
           </div>
         </div>
       </div>

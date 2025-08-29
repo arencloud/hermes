@@ -228,15 +228,33 @@ func RegisterWebRoutes(app *gin.Engine, db *gorm.DB) {
 			c.Redirect(http.StatusFound, "/dashboard")
 			return
 		}
-		c.HTML(http.StatusOK, "signup.html", gin.H{"Title": "Sign up"})
+		// Load organizations list to allow joining an existing one
+		var orgs []models.Organization
+		if err := db.Order("name asc").Find(&orgs).Error; err != nil {
+			c.HTML(http.StatusInternalServerError, "signup.html", gin.H{"Title": "Sign up", "Error": err.Error()})
+			return
+		}
+		c.HTML(http.StatusOK, "signup.html", gin.H{"Title": "Sign up", "Organizations": orgs})
 	})
 	app.POST("/signup", func(c *gin.Context) {
+		existingOrgIDStr := c.PostForm("existingOrganizationId")
 		orgName := c.PostForm("organizationName")
+		orgDomain := c.PostForm("organizationDomain")
+		orgDescription := c.PostForm("organizationDescription")
+		orgIsActive := c.PostForm("organizationIsActive") == "on"
 		email := c.PostForm("email")
 		displayName := c.PostForm("displayName")
+		firstName := c.PostForm("firstName")
+		lastName := c.PostForm("lastName")
+		phone := c.PostForm("phone")
 		password := c.PostForm("password")
-		if orgName == "" || email == "" || password == "" {
-			c.HTML(http.StatusBadRequest, "signup.html", gin.H{"Title": "Sign up", "Error": "Organization, email and password are required"})
+		passwordConfirm := c.PostForm("passwordConfirm")
+		if email == "" || password == "" {
+			c.HTML(http.StatusBadRequest, "signup.html", gin.H{"Title": "Sign up", "Error": "Email and password are required"})
+			return
+		}
+		if password != passwordConfirm {
+			c.HTML(http.StatusBadRequest, "signup.html", gin.H{"Title": "Sign up", "Error": "Passwords do not match"})
 			return
 		}
 		// Start a transaction
@@ -250,51 +268,64 @@ func RegisterWebRoutes(app *gin.Engine, db *gorm.DB) {
 				tx.Rollback()
 			}
 		}()
-		// Create Organization (generate unique slug)
-		org := models.Organization{Name: orgName}
-		// Basic slugify similar to API path
-		slugBase := func(s string) string {
-			out := make([]rune, 0, len(s))
-			prevDash := false
-			for _, r := range []rune(s) {
-				if r >= 'A' && r <= 'Z' { r = r + 32 }
-				if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
-					out = append(out, r); prevDash = false; continue
+
+		var org models.Organization
+		joiningExisting := existingOrgIDStr != ""
+		if joiningExisting {
+			// Join existing organization without any roles
+			var orgID uint64
+			if n, err := strconv.ParseUint(existingOrgIDStr, 10, 64); err == nil {
+				orgID = n
+			} else {
+				tx.Rollback(); c.HTML(http.StatusBadRequest, "signup.html", gin.H{"Title": "Sign up", "Error": "Invalid organization selection"}); return
+			}
+			if err := tx.Where("id = ?", uint(orgID)).First(&org).Error; err != nil {
+				tx.Rollback(); c.HTML(http.StatusBadRequest, "signup.html", gin.H{"Title": "Sign up", "Error": "Selected organization not found"}); return
+			}
+		} else {
+			// Creating a new organization requires organizationName
+			if orgName == "" {
+				tx.Rollback(); c.HTML(http.StatusBadRequest, "signup.html", gin.H{"Title": "Sign up", "Error": "Organization name is required when creating a new organization"}); return
+			}
+			org = models.Organization{Name: orgName, Domain: orgDomain, Description: orgDescription, IsActive: orgIsActive}
+			// Basic slugify similar to API path
+			slugBase := func(s string) string {
+				out := make([]rune, 0, len(s))
+				prevDash := false
+				for _, r := range []rune(s) {
+					if r >= 'A' && r <= 'Z' { r = r + 32 }
+					if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+						out = append(out, r); prevDash = false; continue
+					}
+					if !prevDash { out = append(out, '-'); prevDash = true }
 				}
-				if !prevDash { out = append(out, '-'); prevDash = true }
+				start, end := 0, len(out)
+				for start < end && out[start] == '-' { start++ }
+				for end > start && out[end-1] == '-' { end-- }
+				if start >= end { return "org" }
+				return string(out[start:end])
+			}(orgName)
+			// ensure uniqueness within transaction
+			slug := slugBase
+			if slug == "" { slug = "org" }
+			var exists models.Organization
+			idx := 1
+			for {
+				if err := tx.Where("slug = ?", slug).First(&exists).Error; err != nil {
+					if err == gorm.ErrRecordNotFound { break }
+					tx.Rollback(); c.String(http.StatusInternalServerError, err.Error()); return
+				}
+				idx++
+				slug = fmt.Sprintf("%s-%d", slugBase, idx)
 			}
-			start, end := 0, len(out)
-			for start < end && out[start] == '-' { start++ }
-			for end > start && out[end-1] == '-' { end-- }
-			if start >= end { return "org" }
-			return string(out[start:end])
-		}(orgName)
-		// ensure uniqueness within transaction
-		slug := slugBase
-		if slug == "" { slug = "org" }
-		var exists models.Organization
-		idx := 1
-		for {
-			if err := tx.Where("slug = ?", slug).First(&exists).Error; err != nil {
-				if err == gorm.ErrRecordNotFound { break }
-				tx.Rollback(); c.String(http.StatusInternalServerError, err.Error()); return
+			org.Slug = slug
+			if err := tx.Create(&org).Error; err != nil {
+				tx.Rollback()
+				c.String(http.StatusInternalServerError, err.Error())
+				return
 			}
-			idx++
-			slug = fmt.Sprintf("%s-%d", slugBase, idx)
 		}
-		org.Slug = slug
-		if err := tx.Create(&org).Error; err != nil {
-			tx.Rollback()
-			c.String(http.StatusInternalServerError, err.Error())
-			return
-		}
-		// Ensure Super Admin role
-		role := models.Role{OrganizationID: org.ID, Name: "Super Admin", Key: "super_admin", IsSystem: true, Description: "Has full access within the organization", CanPull: true, CanPush: true}
-		if err := tx.Where("organization_id = ? AND name = ?", org.ID, "Super Admin").FirstOrCreate(&role).Error; err != nil {
-			tx.Rollback()
-			c.String(http.StatusInternalServerError, err.Error())
-			return
-		}
+
 		// Create User with hashed password
 		hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 		if err != nil {
@@ -308,12 +339,35 @@ func RegisterWebRoutes(app *gin.Engine, db *gorm.DB) {
 			c.String(http.StatusInternalServerError, err.Error())
 			return
 		}
-		// Assign Super Admin role to user
-		if err := tx.Create(&models.UserRole{OrganizationID: org.ID, UserID: user.ID, RoleID: role.ID}).Error; err != nil {
-			tx.Rollback()
-			c.String(http.StatusInternalServerError, err.Error())
-			return
+		// Optionally create user profile if any provided
+		if firstName != "" || lastName != "" || phone != "" {
+			profile := models.UserProfile{OrganizationID: org.ID, UserID: user.ID, FirstName: firstName, LastName: lastName, Phone: phone}
+			if err := tx.Create(&profile).Error; err != nil {
+				tx.Rollback()
+				c.String(http.StatusInternalServerError, err.Error())
+				return
+			}
 		}
+
+		if !joiningExisting {
+			// Ensure Super Admin role and assign only for newly created organization owner
+			role := models.Role{OrganizationID: org.ID, Name: "Super Admin", Key: "super_admin", IsSystem: true, Description: "Has full access within the organization", CanPull: true, CanPush: true}
+			if err := tx.Where("organization_id = ? AND name = ?", org.ID, "Super Admin").FirstOrCreate(&role).Error; err != nil {
+				tx.Rollback()
+				c.String(http.StatusInternalServerError, err.Error())
+				return
+			}
+			if err := tx.Create(&models.UserRole{OrganizationID: org.ID, UserID: user.ID, RoleID: role.ID}).Error; err != nil {
+				tx.Rollback()
+				c.String(http.StatusInternalServerError, err.Error())
+				return
+			}
+		} else {
+			// Notify super admins that a new user signed up without permissions
+			// Minimal approach: log and rely on admin UI to show pending users without roles
+			fmt.Printf("[INFO] New user signup: %s joined existing org '%s' (ID=%d) without roles; super admins should assign permissions.\n", email, org.Name, org.ID)
+		}
+
 		if err := tx.Commit().Error; err != nil {
 			c.String(http.StatusInternalServerError, err.Error())
 			return
@@ -355,7 +409,133 @@ func RegisterWebRoutes(app *gin.Engine, db *gorm.DB) {
 			c.HTML(http.StatusForbidden, "forbidden.html", gin.H{"Title": "Forbidden", "Username": username, "Role": roleVal})
 			return
 		}
-		c.HTML(http.StatusOK, "admin.html", gin.H{"Title": "Administration", "Username": username, "Role": roleVal, "CanPull": func() bool { v, _ := c.Get("user:canPull"); return v == true }(), "CanPush": func() bool { v, _ := c.Get("user:canPush"); return v == true }(), "HasRole": func() bool { v, _ := c.Get("user:hasRole"); return v == true }()})
+		// Determine current org from cookie and compute pending users (no effective roles assigned)
+		orgIDStr, _ := c.Cookie("org")
+		var pendingCount int64
+		var pendingUsers []models.User
+		if orgIDStr != "" {
+			// A user is pending if they have no direct user role
+			// AND they are not a member of any group that has at least one role.
+			// SQL explanation:
+			//  - First NOT EXISTS checks user_roles (direct roles)
+			//  - Second NOT EXISTS checks effective roles via user_groups joined to group_roles
+			pendingWhere := `u.organization_id = ?
+				AND NOT EXISTS (
+					SELECT 1 FROM user_roles ur
+					WHERE ur.organization_id = u.organization_id AND ur.user_id = u.id
+				)
+				AND NOT EXISTS (
+					SELECT 1 FROM user_groups ug
+					JOIN group_roles gr ON gr.organization_id = ug.organization_id AND gr.group_id = ug.group_id
+					WHERE ug.organization_id = u.organization_id AND ug.user_id = u.id
+				)`
+			_ = db.Table("users u").Where(pendingWhere, orgIDStr).Count(&pendingCount).Error
+			// Load a few pending users to show actionable links
+			_ = db.Raw(
+				"SELECT u.* FROM users u WHERE "+
+					"u.organization_id = ? AND NOT EXISTS (SELECT 1 FROM user_roles ur WHERE ur.organization_id = u.organization_id AND ur.user_id = u.id) "+
+					"AND NOT EXISTS (SELECT 1 FROM user_groups ug JOIN group_roles gr ON gr.organization_id = ug.organization_id AND gr.group_id = ug.group_id WHERE ug.organization_id = u.organization_id AND ug.user_id = u.id) "+
+					"ORDER BY u.created_at DESC LIMIT 5",
+				orgIDStr,
+			).Scan(&pendingUsers).Error
+		}
+		c.HTML(http.StatusOK, "admin.html", gin.H{
+			"Title":         "Administration",
+			"Username":      username,
+			"Role":          roleVal,
+			"PendingUsers":  pendingCount,
+			"PendingList":   pendingUsers,
+			"CanPull":       func() bool { v, _ := c.Get("user:canPull"); return v == true }(),
+			"CanPush":       func() bool { v, _ := c.Get("user:canPush"); return v == true }(),
+			"HasRole":       func() bool { v, _ := c.Get("user:hasRole"); return v == true }(),
+		})
+	})
+
+	// Organization settings (admin only)
+	app.GET("/admin/org", simpleAuthMiddleware(), func(c *gin.Context) {
+		roleVal, _ := c.Get("user:role")
+		username, _ := c.Get("user:name")
+		if roleVal != "admin" {
+			c.HTML(http.StatusForbidden, "forbidden.html", gin.H{"Title": "Forbidden", "Username": username, "Role": roleVal})
+			return
+		}
+		orgIDStr, err := c.Cookie("org")
+		if err != nil || orgIDStr == "" {
+			c.HTML(http.StatusBadRequest, "admin_org.html", gin.H{"Title": "Organization Settings", "Error": "Organization not found in session", "Username": username, "Role": roleVal})
+			return
+		}
+		var org models.Organization
+		if err := db.Where("id = ?", orgIDStr).First(&org).Error; err != nil {
+			c.HTML(http.StatusInternalServerError, "admin_org.html", gin.H{"Title": "Organization Settings", "Error": err.Error(), "Username": username, "Role": roleVal})
+			return
+		}
+		c.HTML(http.StatusOK, "admin_org.html", gin.H{
+			"Title":    "Organization Settings",
+			"Username": username,
+			"Role":     roleVal,
+			"Org":      org,
+			"CanPull":  func() bool { v, _ := c.Get("user:canPull"); return v == true }(),
+			"CanPush":  func() bool { v, _ := c.Get("user:canPush"); return v == true }(),
+			"HasRole":  func() bool { v, _ := c.Get("user:hasRole"); return v == true }(),
+		})
+	})
+	app.POST("/admin/org", simpleAuthMiddleware(), func(c *gin.Context) {
+		roleVal, _ := c.Get("user:role")
+		username, _ := c.Get("user:name")
+		if roleVal != "admin" {
+			c.HTML(http.StatusForbidden, "forbidden.html", gin.H{"Title": "Forbidden", "Username": username, "Role": roleVal})
+			return
+		}
+		orgIDStr, err := c.Cookie("org")
+		if err != nil || orgIDStr == "" {
+			c.HTML(http.StatusBadRequest, "admin_org.html", gin.H{"Title": "Organization Settings", "Error": "Organization not found in session", "Username": username, "Role": roleVal})
+			return
+		}
+		var org models.Organization
+		if err := db.Where("id = ?", orgIDStr).First(&org).Error; err != nil {
+			c.HTML(http.StatusInternalServerError, "admin_org.html", gin.H{"Title": "Organization Settings", "Error": err.Error(), "Username": username, "Role": roleVal})
+			return
+		}
+		// Read form values
+		name := c.PostForm("name")
+		slug := c.PostForm("slug")
+		domain := c.PostForm("domain")
+		description := c.PostForm("description")
+		isActive := c.PostForm("isActive") == "on"
+		if name == "" {
+			c.HTML(http.StatusBadRequest, "admin_org.html", gin.H{"Title": "Organization Settings", "Error": "Name is required", "Org": org, "Username": username, "Role": roleVal})
+			return
+		}
+		updates := map[string]any{
+			"name":        name,
+			"domain":      domain,
+			"description": description,
+			"is_active":   isActive,
+		}
+		if slug != "" {
+			updates["slug"] = slug
+		}
+		if err := db.Model(&models.Organization{}).Where("id = ?", org.ID).Updates(updates).Error; err != nil {
+			c.HTML(http.StatusInternalServerError, "admin_org.html", gin.H{"Title": "Organization Settings", "Error": err.Error(), "Org": org, "Username": username, "Role": roleVal})
+			return
+		}
+		// reload
+		if err := db.First(&org, org.ID).Error; err != nil {
+			c.HTML(http.StatusInternalServerError, "admin_org.html", gin.H{"Title": "Organization Settings", "Error": err.Error(), "Username": username, "Role": roleVal})
+			return
+		}
+		// Update cookie orgName if name changed
+		c.SetCookie("orgName", org.Name, 3600*6, "/", "", false, true)
+		c.HTML(http.StatusOK, "admin_org.html", gin.H{
+			"Title":    "Organization Settings",
+			"Username": username,
+			"Role":     roleVal,
+			"Org":      org,
+			"Success":  true,
+			"CanPull":  func() bool { v, _ := c.Get("user:canPull"); return v == true }(),
+			"CanPush":  func() bool { v, _ := c.Get("user:canPush"); return v == true }(),
+			"HasRole":  func() bool { v, _ := c.Get("user:hasRole"); return v == true }(),
+		})
 	})
 
 	// Admin Users & Roles page (admin only)

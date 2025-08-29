@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Hermes API",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "description": "Cookie-based authentication. Users with roles may access API. Super Admin role (key: super_admin) grants full access including buckets management and list."
   },
   "servers": [{"url": "/"}],
