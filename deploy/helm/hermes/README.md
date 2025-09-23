@@ -17,7 +17,7 @@ Deploy Hermes (S3 storage manager) to Kubernetes, OKD, or OpenShift in rootless 
 
 ```bash
 # Set the image reference
-export IMG=ghcr.io/your-org/hermes:latest
+export IMG=ghcr.io/arencloud/hermes:latest
 
 helm upgrade --install hermes deploy/helm/hermes \
   --set image.repository=${IMG%%:*} \
@@ -73,7 +73,7 @@ See `values.yaml` for full options. Common flags:
 
 ```yaml
 image:
-  repository: ghcr.io/your-org/hermes
+  repository: ghcr.io/arencloud/hermes
   tag: latest
 
 service:

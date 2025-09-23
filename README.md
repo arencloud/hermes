@@ -240,7 +240,7 @@ Prerequisites: Go 1.24+
 - Test:
   make test
 
-Server binary is built at ./server.
+Server binary is built at ./server (git-ignored).
 
 ## Docker image 📦
 
@@ -253,6 +253,7 @@ Multi-arch image is published to GHCR by the Release workflow when tags vX.Y.Z a
 Runtime defaults in the image:
 - STATIC_DIR=/app/web/dist
 - DB_PATH=/data/hermes.db (mount /data)
+- Static assets and the logo are baked into the image at /app/web/dist and /app/img/logo
 
 ## Helm chart ⛵
 

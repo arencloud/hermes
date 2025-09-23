@@ -32,6 +32,7 @@ WORKDIR /app
 # Copy binary and static assets
 COPY --from=builder /out/server /app/server
 COPY web/dist /app/web/dist
+COPY img/logo /app/img/logo
 
 # Build-time metadata again for labels
 ARG VERSION
