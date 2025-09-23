@@ -1,0 +1,125 @@
+# Default values for Hermes Helm chart.
+# This chart supports Kubernetes, OKD, and OpenShift in rootless mode.
+
+image:
+  repository: ghcr.io/arencloud/hermes
+  tag: "latest"
+  pullPolicy: IfNotPresent
+  # imagePullSecrets:
+  #   - name: regcred
+
+replicaCount: 1
+
+service:
+  type: ClusterIP
+  port: 8080
+
+http:
+  # Container port Hermes listens on (maps to env HTTP_PORT)
+  containerPort: 8080
+  # Base path for UI/API if behind a path-based ingress (not required)
+  basePath: 
+
+# Data persistence for SQLite (default). If using Postgres, disable persistence and set db.postgres.* below.
+persistence:
+  enabled: true
+  existingClaim: ""
+  storageClass: ""
+  size: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  mountPath: /data
+
+# Database configuration
+# By default Hermes uses SQLite at DB_PATH. To use Postgres, set driver to postgres and supply dsn.
+db:
+  driver: sqlite   # sqlite | postgres
+  # SQLite path inside the container (should be under persistence.mountPath)
+  sqlitePath: /data/hermes.db
+  # For Postgres provide DSN / DATABASE_URL, e.g. postgres://user:pass@host:5432/dbname?sslmode=disable
+  dsn: ""
+
+# Static assets directory inside the image (no go:embed). Adjust if your image uses a different path.
+staticDir: /app/web/dist
+
+# Environment overrides (key/value). Useful for toggling LOG_JSON, LOG_LEVEL, OIDC settings, etc.
+extraEnv: {}
+# Example:
+# extraEnv:
+#   LOG_LEVEL: info
+#   LOG_JSON: "true"
+
+# Reference additional environment from existing secrets/configmaps
+extraEnvFrom: []
+# - secretRef:
+#     name: hermes-secrets
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# Pod-level security contexts for rootless mode
+podSecurityContext:
+  runAsNonRoot: true
+  # Do not force a specific UID on OpenShift; let SCC assign a random UID.
+  # fsGroup may be set if your storage requires it; often not needed on OpenShift.
+  # fsGroup: 1001
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  # runAsUser: 1001   # avoid pinning on OpenShift; comment out by default
+
+# Ingress (Kubernetes/OKD). For OpenShift, you can prefer Route below.
+ingress:
+  enabled: false
+  className: ""
+  hosts:
+    - host: hermes.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  # - secretName: hermes-tls
+  #   hosts:
+  #     - hermes.local
+
+# OpenShift Route support
+openshift:
+  route:
+    enabled: false
+    host: "" # e.g., hermes.apps.cluster.example.com
+    tls:
+      termination: edge # edge|passthrough|reencrypt
+      insecureEdgeTerminationPolicy: Redirect # Allow|None|Redirect
+
+# Probes
+livenessProbe:
+  enabled: true
+  path: /health
+  initialDelaySeconds: 10
+  periodSeconds: 10
+
+readinessProbe:
+  enabled: true
+  path: /health
+  initialDelaySeconds: 5
+  periodSeconds: 5
+
+# Annotations for pods
+podAnnotations: {}

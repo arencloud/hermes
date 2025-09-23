@@ -1,0 +1,40 @@
+Thank you for installing Hermes!
+
+Release name: {{ .Release.Name }}
+Namespace: {{ .Release.Namespace }}
+
+1. Service
+   Type: {{ .Values.service.type }}
+   Port: {{ .Values.service.port }}
+
+2. Accessing Hermes
+
+   - If using Ingress:
+     Host(s):
+{{- range .Values.ingress.hosts }}
+       * {{ .host }}
+{{- end }}
+     Path(s):
+{{- range .Values.ingress.hosts }}
+{{- range .paths }}
+       * {{ .path }}
+{{- end }}
+{{- end }}
+
+   - If using OpenShift Route:
+     Route Host: {{ .Values.openshift.route.host | default "(cluster-assigned)" }}
+
+   - If using NodePort/Port-Forward:
+     kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "hermes.fullname" . }} 8080:{{ .Values.service.port }}
+     Open http://localhost:8080
+
+3. Configuration
+   Environment is supplied via ConfigMap {{ include "hermes.fullname" . }}. You can override via values:
+   - db.driver (sqlite|postgres)
+   - db.sqlitePath or db.dsn
+   - staticDir
+   - extraEnv / extraEnvFrom
+
+4. Persistence
+   SQLite DB is stored under {{ .Values.persistence.mountPath }} when persistence.enabled=true.
+   For Postgres, set db.driver=postgres and db.dsn, and you can disable persistence.

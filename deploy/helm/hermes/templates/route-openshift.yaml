@@ -1,0 +1,21 @@
+{{- if .Values.openshift.route.enabled }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "hermes.fullname" . }}
+  labels:
+    {{- include "hermes.labels" . | nindent 4 }}
+spec:
+  to:
+    kind: Service
+    name: {{ include "hermes.fullname" . }}
+    weight: 100
+  port:
+    targetPort: http
+  {{- if .Values.openshift.route.host }}
+  host: {{ .Values.openshift.route.host | quote }}
+  {{- end }}
+  tls:
+    termination: {{ .Values.openshift.route.tls.termination | default "edge" }}
+    insecureEdgeTerminationPolicy: {{ .Values.openshift.route.tls.insecureEdgeTerminationPolicy | default "Redirect" }}
+{{- end }}

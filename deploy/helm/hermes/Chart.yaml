@@ -1,0 +1,22 @@
+apiVersion: v2
+name: hermes
+description: Helm chart for deploying Hermes (S3 storage manager) to Kubernetes/OpenShift in rootless mode
+
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+
+home: https://example.com/hermes
+keywords:
+  - s3
+  - minio
+  - storage
+  - observability
+  - tracing
+  - logging
+maintainers:
+  - name: Hermes
+    email: admin@example.com
+
+annotations:
+  category: storage

@@ -1,0 +1,107 @@
+name: Release and publish image
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: arencloud/hermes
+
+jobs:
+  release:
+    name: Build, push image and create release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract version
+        id: vars
+        run: |
+          REF_NAME="${GITHUB_REF_NAME}" # e.g., v1.2.3
+          echo "ref_name=${REF_NAME}" >> $GITHUB_OUTPUT
+          # strip leading v
+          VERSION=${REF_NAME#v}
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          PATCH=$(echo "$VERSION" | cut -d. -f3)
+          echo "major=${MAJOR}" >> $GITHUB_OUTPUT
+          echo "minor=${MINOR}" >> $GITHUB_OUTPUT
+          echo "patch=${PATCH}" >> $GITHUB_OUTPUT
+          BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          echo "build_date=${BUILD_DATE}" >> $GITHUB_OUTPUT
+
+      - name: Build and push image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          provenance: false
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            VERSION=${{ steps.vars.outputs.version }}
+            VCS_REF=${{ github.sha }}
+            BUILD_DATE=${{ steps.vars.outputs.build_date }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:v${{ steps.vars.outputs.major }}.${{ steps.vars.outputs.minor }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:v${{ steps.vars.outputs.major }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.repositoryUrl }}
+            org.opencontainers.image.version=${{ steps.vars.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: Compose release notes body
+        id: notes
+        run: |
+          cat > body.md << EOF
+          🛰️ Hermes Release ${{ steps.vars.outputs.ref_name }}
+
+          This release was built and pushed to GHCR.
+
+          Image tags:
+          - ghcr.io/arencloud/hermes:${{ steps.vars.outputs.version }}
+          - ghcr.io/arencloud/hermes:v${{ steps.vars.outputs.major }}.${{ steps.vars.outputs.minor }}
+          - ghcr.io/arencloud/hermes:v${{ steps.vars.outputs.major }}
+          - ghcr.io/arencloud/hermes:latest
+
+          Pull example:
+          docker pull ghcr.io/arencloud/hermes:${{ steps.vars.outputs.version }}
+
+          Helm values default to the ghcr.io/arencloud/hermes repository; set image.tag to ${{ steps.vars.outputs.version }} to deploy this release.
+          EOF
+          echo "file=body.md" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.ref_name }}
+          name: Hermes ${{ steps.vars.outputs.ref_name }}
+          generate_release_notes: true
+          body_path: ${{ steps.notes.outputs.file }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

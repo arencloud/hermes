@@ -1,0 +1,1524 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Hermes • Cloud Storage Manager</title>
+  <meta name="color-scheme" content="light dark" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/img/logo/logo.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/img/logo/logo.png" />
+  <link rel="apple-touch-icon" href="/img/logo/logo.png" />
+  <style>
+    :root{
+      --bg: canvas;
+      --text: canvastext;
+      --muted: color-mix(in oklab, var(--text) 60%, transparent);
+      --primary: #6366f1; /* indigo-500 */
+      --primary-600: #4f46e5;
+      --border: color-mix(in oklab, var(--text) 12%, transparent);
+      --card: color-mix(in oklab, var(--bg) 70%, var(--text) 2%);
+      --shadow: 0 10px 30px rgba(0,0,0,.08);
+      color-scheme: light dark;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);}
+    a{color:inherit;text-decoration:none}
+    .app{display:grid;grid-template-rows:64px 1fr;grid-template-columns:260px 1fr;min-height:100vh}
+    /* When unauthenticated, collapse sidebar column so login can be truly centered */
+    .app.unauth{grid-template-columns:1fr}
+    .app.unauth .sidebar{display:none!important}
+    .appbar{grid-column:1/3;display:flex;align-items:center;gap:12px;padding:0 20px;border-bottom:1px solid var(--border);backdrop-filter:saturate(1.2) blur(6px);position:sticky;top:0;background:color-mix(in oklab, var(--bg) 70%, transparent)}
+    .brand{display:flex;align-items:center;gap:12px;font-weight:700}
+    .brand .logo{width:28px;height:28px;border-radius:6px;display:block;object-fit:cover;box-shadow:var(--shadow)}
+    .grow{flex:1}
+    .search{max-width:520px;flex:1;display:flex;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 12px;gap:8px}
+    .search input{flex:1;border:none;background:transparent;color:inherit;outline:none}
+    .sidebar{border-right:1px solid var(--border);padding:18px 14px;display:flex;flex-direction:column;gap:8px}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:inherit}
+    .nav-item.active{background:color-mix(in oklab, var(--primary) 14%, transparent);color:var(--primary-600)}
+    .nav-item:hover{background:color-mix(in oklab, var(--text) 8%, transparent)}
+    main{padding:28px;display:flex;flex-direction:column;gap:18px}
+    .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;box-shadow:var(--shadow)}
+    .card h3{margin:4px 0 10px 0}
+    .muted{opacity:.72}
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:transparent;cursor:pointer;transition:.15s}
+    .btn:hover{transform:translateY(-1px)}
+    .btn.primary{background:var(--primary);border-color:var(--primary);color:white}
+    .btn.ghost{background:transparent}
+    .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .table{width:100%;border-collapse:separate;border-spacing:0 8px}
+    .table th{font-size:12px;text-transform:uppercase;letter-spacing:.08em;text-align:left;color:var(--muted)}
+    .row{background:var(--card);border:1px solid var(--border);border-radius:12px;display:grid;grid-template-columns:1.6fr 0.7fr 0.8fr minmax(180px,auto);gap:12px;padding:12px;align-items:center}
+        @media (max-width: 900px){
+          .row{grid-template-columns:1fr; gap:8px}
+          .row .actions{justify-content:flex-start; flex-wrap:wrap}
+        }
+    .flex{display:flex;gap:10px;align-items:center}
+    .ellipsis{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0}
+    .field{display:flex;flex-direction:column;gap:6px}
+    .input, select{padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:transparent;color:inherit}
+    .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;border:1px solid var(--border);border-bottom-width:2px;padding:2px 6px;border-radius:6px;opacity:.8}
+    .footer{margin-top:auto;opacity:.6;font-size:12px}
+    .split{display:grid;grid-template-columns:1.3fr .7fr;gap:18px}
+    .empty{border:1px dashed var(--border);border-radius:12px;padding:18px;text-align:center}
+    @media (max-width: 1000px){.app{grid-template-columns:1fr}.sidebar{display:none}.split{grid-template-columns:1fr}}
+    .tag{padding:4px 8px;border-radius:999px;border:1px solid var(--border);font-size:12px}
+    .toast{position:fixed;bottom:16px;right:16px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow);display:none}
+    /* Upload modal */
+    .modal{position:fixed;inset:0;background:color-mix(in oklab, var(--bg) 40%, rgba(0,0,0,.3));display:none;align-items:center;justify-content:center;z-index:50}
+    .modal .box{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:20px;min-width:320px;max-width:520px}
+    .progress{height:10px;border-radius:999px;background:color-mix(in oklab, var(--text) 12%, transparent);overflow:hidden;position:relative}
+    .progress>i{display:block;height:100%;width:0%;background:linear-gradient(90deg, var(--primary), #22c55e);transition:width .2s}
+    .progress.sm{height:8px}
+    /* Indeterminate animation for operations without known total (Copy/Move) */
+    @keyframes indeterminate {
+      0% { left: -40%; width: 30%; }
+      50% { left: 35%; width: 40%; }
+      100% { left: 100%; width: 30%; }
+    }
+    .progress.indet::after{
+      content:""; position:absolute; top:0; bottom:0; left:0; height:100%;
+      background: linear-gradient(90deg, color-mix(in oklab, var(--primary) 60%, transparent), color-mix(in oklab, #22c55e 70%, transparent));
+      animation: indeterminate 1.2s ease-in-out infinite;
+      border-radius: 999px;
+    }
+    .muted-small{font-size:12px;opacity:.7}
+    /* Upload Dock */
+    #uploadDock{position:fixed;left:16px;bottom:16px;z-index:60;display:none}
+    #uploadDock .dock-card{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:12px;min-width:260px;max-width:360px}
+    #uploadDock .title{display:flex;align-items:center;gap:8px;font-weight:600}
+    #uploadDock .title .dot{width:8px;height:8px;border-radius:999px;background:conic-gradient(from 0deg, var(--primary), #22c55e)}
+    #uploadDock .subtitle{font-size:12px;opacity:.75}
+    /* Transfer Dock (Copy/Move) */
+    #transferDock{position:fixed;left:16px;bottom:96px;z-index:60;display:none}
+    #transferDock .dock-card{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:12px;min-width:260px;max-width:420px}
+    #transferDock .title{display:flex;align-items:center;gap:8px;font-weight:600}
+    #transferDock .title .dot{width:8px;height:8px;border-radius:999px;background:conic-gradient(from 0deg, var(--primary), #f59e0b)}
+    #transferDock .subtitle{font-size:12px;opacity:.75}
+    /* Observability helpers */
+    .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+    .o-grid{display:grid;grid-template-columns:repeat(2,minmax(320px,1fr));gap:18px}
+    @media (max-width: 1000px){ .o-grid{grid-template-columns:1fr} }
+    .chart{width:100%; height:140px}
+    /* Login layout */
+    .login-section{min-height:calc(100vh - 64px);display:grid;place-items:center;padding:24px;background:radial-gradient(1400px 800px at 20% -10%, color-mix(in oklab, var(--primary) 22%, transparent), transparent)}
+    .login-card{width:clamp(820px, 70vw, 1120px);padding:0;overflow:hidden;border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,.12);border:1px solid var(--border);background:var(--card)}
+    .login-grid{display:grid;grid-template-columns:1.1fr .9fr}
+    .login-form-side{padding:34px 32px 28px 32px}
+    .login-hero-side{background:radial-gradient(1200px 600px at 0% 0%, color-mix(in oklab, var(--primary) 16%, transparent), transparent);display:flex;align-items:center;justify-content:center;padding:0}
+    .btn.lg{padding:12px 18px;font-size:16px;border-radius:12px}
+    @media (max-width: 1000px){ .login-grid{grid-template-columns:1fr} }
+    /* Settings compact styles */
+    .settings-compact .card{padding:12px;border-radius:12px}
+    .settings-compact h3{margin:2px 0 8px 0;font-size:16px}
+    .settings-compact .muted{font-size:12px}
+    .settings-compact .muted-small{font-size:11px}
+    .settings-compact .toolbar{gap:8px}
+    .settings-compact .input, .settings-compact select{padding:8px 10px;border-radius:8px}
+    .btn.sm{padding:6px 10px;font-size:13px;border-radius:8px}
+    .settings-compact .chart, .settings-compact canvas{height:120px}
+  </style>
+</head>
+<body>
+<div class="app">
+  <header class="appbar">
+    <div class="brand"><img src="/img/logo/logo.png" alt="Hermes" class="logo" style="width:28px;height:28px;border-radius:6px;object-fit:cover"/> Hermes</div>
+    <div class="grow"></div>
+    <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16a8 8 0 0 1 0 16Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <input id="globalSearch" placeholder="Search buckets, objects, providers... ( / )" />
+      <span class="kbd">/</span>
+    </div>
+    <div id="account"></div>
+    <button class="btn ghost" id="themeBtn" title="Toggle theme">🌗</button>
+  </header>
+  <aside class="sidebar" id="sidebar" style="display:none">
+    <a class="nav-item" href="#/dashboard"><span>🏠</span> Dashboard</a>
+    <a class="nav-item" href="#/providers"><span>🔗</span> Providers</a>
+    <a class="nav-item" href="#/buckets"><span>🪣</span> Buckets</a>
+    <a class="nav-item" href="#/objects"><span>📦</span> Objects</a>
+    <a class="nav-item" href="#/observability"><span>📈</span> Observability</a>
+    <a class="nav-item" href="#/tracing"><span>🧭</span> Tracing</a>
+    <a class="nav-item" href="#/logging"><span>🪵</span> Logging</a>
+    <a class="nav-item" href="#/api-explorer"><span>🧪</span> API Explorer</a>
+    <a class="nav-item" href="#/users"><span>👤</span> Users</a>
+    <a class="nav-item" href="#/settings"><span>⚙️</span> Settings</a>
+    <div class="footer">v0.1.0 • API <code>/api</code></div>
+  </aside>
+  <main id="view"></main>
+</div>
+<div id="toast" class="toast"></div>
+<script>
+  // Theming
+  const prefersDark = matchMedia('(prefers-color-scheme: dark)');
+  function applyTheme(){
+    const t = localStorage.getItem('theme');
+    document.documentElement.style.colorScheme = t || (prefersDark.matches ? 'dark' : 'light');
+  }
+  function toggleTheme(){
+    const current = document.documentElement.style.colorScheme || (prefersDark.matches ? 'dark' : 'light');
+    const next = current==='dark' ? 'light' : 'dark';
+    localStorage.setItem('theme', next); applyTheme();
+  }
+  document.getElementById('themeBtn').onclick = toggleTheme; applyTheme();
+
+  // Utilities
+  const toast = (msg, ms=2500)=>{ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display='none', ms)}
+  const setActive = ()=>{ document.querySelectorAll('.nav-item').forEach(a=>a.classList.toggle('active', a.getAttribute('href')===location.hash)) }
+  const $ = (sel, el=document)=>el.querySelector(sel);
+  const $$ = (sel, el=document)=>Array.from(el.querySelectorAll(sel));
+  async function api(path, opts){
+    // Ensure session cookies are sent/received (fixes login/session issues behind proxies or custom hosts)
+    const init = Object.assign({credentials:'include'}, opts||{});
+    const res = await fetch(path, init);
+    if(!res.ok){ throw new Error(await res.text() || res.statusText); }
+    const ct = res.headers.get('content-type')||''; return ct.includes('application/json')? res.json(): res.text();
+  }
+  // Auth helpers
+  let currentUser = null;
+  async function authMe(){
+    try{
+      const u = await fetch('/api/v1/auth/me', {credentials:'include'}).then(async r=>{ if(!r.ok) throw new Error(await r.text()); return r.json() });
+      currentUser = u; updateUserUI(); return u;
+    }catch(e){ currentUser=null; updateUserUI(); return null }
+  }
+  async function authLogin(email, password){
+    const u = await api('/api/v1/auth/login',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email,password})});
+    currentUser = u; updateUserUI(); return u;
+  }
+  async function authLogout(){ await fetch('/api/v1/auth/logout', {method:'POST', credentials:'include'}); currentUser=null; updateUserUI(); location.hash='#/dashboard'; render(); }
+  function updateUserUI(){
+    const appRoot = document.querySelector('.app'); if (appRoot) appRoot.classList.toggle('unauth', !currentUser);
+    const usersNav = document.querySelector('a[href="#/users"]'); if(usersNav) usersNav.style.display = currentUser && currentUser.role==='admin' ? '' : 'none';
+    const settingsNav = document.querySelector('a[href="#/settings"]'); if(settingsNav) settingsNav.style.display = currentUser && currentUser.role==='admin' ? '' : 'none';
+    const apiExplorerNav = document.querySelector('a[href="#/api-explorer"]'); if (apiExplorerNav) apiExplorerNav.style.display = currentUser && (currentUser.role==='admin' || currentUser.role==='editor') ? '' : 'none';
+    const providersNav = document.querySelector('a[href="#/providers"]'); if(providersNav) providersNav.style.display = currentUser ? '' : 'none';
+    const sidebar = document.getElementById('sidebar'); if (sidebar) sidebar.style.display = currentUser ? '' : 'none';
+    const account = document.getElementById('account');
+    if (account){ account.innerHTML = currentUser? `<span class="tag">${currentUser.email} • ${currentUser.role}</span> <button class="btn" id="logoutBtn">Logout</button>` : '';
+      const lb = document.getElementById('logoutBtn'); if(lb) lb.onclick = authLogout; }
+  }
+
+  // Upload dock helpers
+  let uploadState = null; // {xhr, file, total, uploaded, modal}
+  function getUploadDock(){
+    let dock = document.getElementById('uploadDock');
+    if(!dock){
+      dock = document.createElement('div');
+      dock.id = 'uploadDock';
+      document.body.appendChild(dock);
+    }
+    return dock;
+  }
+  function showUploadDock(){ const dock = getUploadDock(); dock.style.display='block'; }
+  function hideUploadDock(){ const dock = getUploadDock(); dock.style.display='none'; }
+  function renderUploadDock(){
+    if(!uploadState) { hideUploadDock(); return }
+    const dock = getUploadDock();
+    const pct = uploadState.total ? Math.min(100, Math.round((uploadState.uploaded/uploadState.total)*100)) : 0;
+    const speed = (function(){ const dt = (Date.now()-uploadState.started)/1000; return dt>0? uploadState.uploaded/dt : 0 })();
+    const fmtBytes = (n)=>{ const u=['B','KB','MB','GB','TB']; let i=0, x=Number(n)||0; while(x>=1024&&i<u.length-1){ x/=1024; i++; } return x.toFixed(x<10&&i>0?1:0)+' '+u[i]; };
+    dock.innerHTML = `<div class="dock-card">
+      <div class="title"><span class="dot"></span> Uploading <span class="ellipsis" title="${uploadState.file.name}">${uploadState.file.name}</span></div>
+      <div class="subtitle" style="margin:6px 0">${fmtBytes(uploadState.uploaded)} / ${fmtBytes(uploadState.total)} • ${pct}% • ${fmtBytes(speed)}/s</div>
+      <div class="progress sm"><i style="width:${pct}%"></i></div>
+      <div class="toolbar" style="margin-top:8px"><button class="btn" id="udShow">Show</button><span class="grow"></span><button class="btn" id="udCancel">Cancel</button></div>
+    </div>`;
+    const sh = dock.querySelector('#udShow'); if (sh) sh.onclick = ()=>{ if(uploadState && uploadState.modal){ uploadState.modal.style.display='flex'; hideUploadDock(); } };
+    const cb = dock.querySelector('#udCancel'); if (cb) cb.onclick = ()=>{ try{ uploadState && uploadState.xhr && uploadState.xhr.abort(); }catch{} hideUploadDock(); if(uploadState && uploadState.modal) uploadState.modal.style.display='none'; toast('Upload canceled'); uploadState=null; };
+    showUploadDock();
+  }
+
+  // Transfer dock helpers for Copy/Move (indeterminate progress)
+  let transferState = null; // {xhr, kind:'Copy'|'Move', title, subtitle, started, modal}
+  function getTransferDock(){
+    let dock = document.getElementById('transferDock');
+    if(!dock){ dock = document.createElement('div'); dock.id = 'transferDock'; document.body.appendChild(dock); }
+    return dock;
+  }
+  function showTransferDock(){ getTransferDock().style.display='block'; }
+  function hideTransferDock(){ getTransferDock().style.display='none'; }
+  function renderTransferDock(){
+    if(!transferState){ hideTransferDock(); return }
+    const dock = getTransferDock();
+    const elapsed = ((Date.now() - (transferState.started||Date.now()))/1000).toFixed(1);
+    const title = transferState.title || `${transferState.kind||'Transfer'}`;
+    const subtitle = transferState.subtitle || '';
+    const total = transferState.total||0; const done = transferState.done||0;
+    const pct = total>0 ? Math.min(100, Math.round((done/total)*100)) : null;
+    const bar = pct==null ? `<div class='progress sm indet'></div>` : `<div class='progress sm'><i style='width:${pct}%'></i></div>`;
+    const sub = pct==null ? `${subtitle} • ${elapsed}s` : `${subtitle} • ${elapsed}s • ${pct}%`;
+    dock.innerHTML = `<div class="dock-card">
+      <div class="title"><span class="dot"></span> ${title}</div>
+      <div class="subtitle" style="margin:6px 0">${sub}</div>
+      ${bar}
+      <div class="toolbar" style="margin-top:8px"><button class="btn" id="tdShow">Show</button><span class="grow"></span><button class="btn" id="tdCancel">Cancel</button></div>
+    </div>`;
+    const sh = dock.querySelector('#tdShow'); if (sh) sh.onclick = ()=>{ if(transferState && transferState.modal){ transferState.modal.style.display='flex'; hideTransferDock(); } };
+    const cb = dock.querySelector('#tdCancel'); if (cb) cb.onclick = ()=>{ try{ transferState && transferState.xhr && transferState.xhr.abort(); }catch{} hideTransferDock(); if(transferState && transferState.modal) transferState.modal.style.display='none'; toast(`${transferState?.kind||'Transfer'} canceled`); transferState=null; };
+    showTransferDock();
+  }
+
+  // Simple router
+  const routes = {
+    '#/dashboard': renderDashboard,
+    '#/providers': renderProviders,
+    '#/buckets': renderBuckets,
+    '#/objects': renderObjects,
+    '#/users': renderUsers,
+    '#/settings': renderSettings,
+    '#/observability': renderObservability,
+    '#/tracing': renderTracing,
+    '#/logging': renderLogging, 
+    '#/api-explorer': renderAPIExplorer, 
+  };
+  window.addEventListener('hashchange', ()=>{ setActive(); render(); });
+  document.addEventListener('DOMContentLoaded', async ()=>{ if(!location.hash) location.hash = '#/dashboard'; await authMe(); setActive(); render(); });
+
+  // Global search shortcut
+  document.addEventListener('keydown', (e)=>{ if(e.key === '/') { e.preventDefault(); $('#globalSearch').focus(); } });
+
+  // Views
+  async function render(){
+    const v = document.getElementById('view');
+    v.innerHTML = '';
+    if (!currentUser) { return renderLogin(v); }
+    const fn = routes[location.hash] || renderDashboard;
+    try { await fn(v); } catch(e){ v.innerHTML = `<div class="card"><h3>Error</h3><div class="muted">${e}</div></div>`; }
+  }
+
+  async function renderDashboard(root){
+    const health = await fetch('/health').then(r=>r.text()).catch(()=> 'unreachable');
+    root.innerHTML = `
+      <section class="cards">
+        <div class="card"><h3>Health</h3><div class="muted">${health}</div><div class="toolbar"><a class="btn" href="#/providers">Manage Providers</a></div></div>
+        <div class="card"><h3>Quick Actions</h3><div class="toolbar"><a class="btn primary" href="#/buckets">Explore Buckets</a><a class="btn" href="#/objects">Find Objects</a></div></div>
+        <div class="card"><h3>Theme</h3><div class="muted">Light/Dark</div><button class="btn" onclick="toggleTheme()">Toggle</button></div>
+      </section>
+    `;
+  }
+
+  async function renderProviders(root){
+    root.innerHTML = `
+      <div class="toolbar">
+        <h2 style="margin:0">Providers</h2>
+        <span class="grow"></span>
+        <input id="providerSearch" class="input" placeholder="Filter providers (name, type, endpoint)" style="min-width:260px" />
+        <button class="btn" id="testAll">Test All</button>
+        <button class="btn primary" id="newProviderBtn">New Provider</button>
+      </div>
+      <div id="providersList" class="cards"></div>
+      <div class="card" id="providerForm" style="display:none"></div>
+    `;
+    const isViewer = currentUser && currentUser.role==='viewer';
+    if (isViewer) { const nb = $('#newProviderBtn'); if (nb) nb.style.display='none'; }
+    $('#newProviderBtn').onclick = ()=> showProviderForm();
+    $('#testAll').onclick = ()=> testAll();
+    $('#providerSearch').addEventListener('input', ()=> loadProviders());
+    await loadProviders();
+
+    async function testAll(){
+      const cards = Array.from(document.querySelectorAll('[data-provider-card]'));
+      for (const c of cards){ const btn = c.querySelector('[data-test]'); if(btn) btn.click(); await new Promise(r=>setTimeout(r,150)); }
+    }
+
+    async function loadProviders(){
+      const list = $('#providersList'); list.innerHTML = '<div class="card">Loading...</div>';
+      let items = await api('/api/v1/providers');
+      // Normalize to array to avoid TypeError when backend responds with non-array JSON/text
+      if (!Array.isArray(items)) {
+        if (items == null) items = [];
+        else items = [items];
+      }
+      const q = ($('#providerSearch').value||'').toLowerCase();
+      const filtered = items.filter(p=> `${(p.name||'')} ${(p.type||'')} ${(p.endpoint||'')}`.toLowerCase().includes(q));
+      list.innerHTML = '';
+      if(!filtered.length){ list.innerHTML = '<div class="empty">No providers match filter.</div>'; return }
+      filtered.forEach(p=> list.appendChild(providerCard(p)) );
+    }
+    function providerCard(p){
+      const el = document.createElement('div'); el.className='card'; el.setAttribute('data-provider-card','');
+      const isCurrent = String(sessionStorage.getItem('currentProvider')) === String(p.id);
+      const isViewer = currentUser && currentUser.role==='viewer';
+      const actions = isViewer ? `
+            <button class="btn" data-set>Set Current</button>
+            <button class="btn" data-test>Test</button>
+            <a class="btn" href="#/buckets" data-buckets data-provider="${p.id}">Buckets</a>
+      ` : `
+            <button class="btn" data-set>Set Current</button>
+            <button class="btn" data-test>Test</button>
+            <button class="btn" data-clone>Clone</button>
+            <a class="btn" href="#/buckets" data-buckets data-provider="${p.id}">Buckets</a>
+            <button class="btn" data-edit>Edit</button>
+            <button class="btn" data-del>Delete</button>
+      `;
+      el.innerHTML = `
+        <div class="flex" style="justify-content:space-between">
+          <div>
+            <h3>${p.name} <span class="tag">${p.type}</span> ${isCurrent? '<span class="tag" style="border-color: var(--primary); color: var(--primary-600)">Current</span>':''}</h3>
+            <div class="muted">${p.endpoint} • ${p.region||'—'} • SSL: ${p.useSSL? 'on':'off'}</div>
+            <div class="muted" data-stats style="margin-top:6px"></div>
+          </div>
+          <div class="toolbar">
+            ${actions}
+          </div>
+        </div>`;
+      const editBtn = el.querySelector('[data-edit]'); if (editBtn) editBtn.onclick = ()=> showProviderForm(p);
+      const delBtn = el.querySelector('[data-del]'); if (delBtn) delBtn.onclick = async ()=>{ if(!confirm('Delete provider?')) return; await api(`/api/v1/providers/${p.id}`, {method:'DELETE'}); toast('Deleted'); renderProviders(root); };
+      el.querySelector('[data-buckets]').addEventListener('click',()=> sessionStorage.setItem('currentProvider', p.id));
+      el.querySelector('[data-set]').onclick = ()=>{ sessionStorage.setItem('currentProvider', p.id); toast('Current provider set'); renderProviders(root); };
+      const cloneBtn = el.querySelector('[data-clone]'); if (cloneBtn) cloneBtn.onclick = ()=>{ const {id, createdAt, updatedAt, ...rest} = p; showProviderForm({...rest, name: rest.name + ' (copy)'}); };
+      el.querySelector('[data-test]').onclick = async ()=>{
+        const stats = el.querySelector('[data-stats]'); stats.textContent = 'Testing connection...';
+        try{
+          if(!p.id){ throw new Error('invalid provider id'); }
+          const buckets = await api(`/api/v1/providers/${p.id}/buckets`);
+          const count = Array.isArray(buckets) ? buckets.length : (buckets ? 1 : 0);
+          stats.textContent = `OK • ${count} bucket(s)`; toast(`Provider ${p.name} OK`);
+        }catch(e){
+          const msg = String(e||'');
+          stats.textContent = 'Error: '+msg;
+          let hint = '';
+          if (msg.includes('301') || msg.toLowerCase().includes('<html')) {
+            hint = ' Hint: Check endpoint host and SSL. For AWS use s3.<region>.amazonaws.com or s3.amazonaws.com with correct Use SSL. For MinIO, use http(s)://host:port.';
+          }
+          toast('Test failed: '+msg + hint);
+        }
+      };
+      // lazy load short stats automatically (only if id present)
+      if(p.id){ setTimeout(()=> { const tbtn = el.querySelector('[data-test]'); if(tbtn) tbtn.click(); }, 50); }
+      return el;
+    }
+    function showProviderForm(p={}){
+      if (currentUser && currentUser.role==='viewer') { toast('Viewers cannot create or edit providers'); return }
+      const f = $('#providerForm'); f.style.display='block';
+      f.innerHTML = `
+        <h3>${p.id? 'Edit':'New'} Provider</h3>
+        <div class="split">
+          <div class="card" style="box-shadow:none">
+            <div class="field"><label>Name</label><input class="input" id="pname" value="${p.name||''}"/></div>
+            <div class="field"><label>Type</label>
+              <select id="ptype" class="input">
+                <option ${p.type==='aws'?'selected':''} value="aws">AWS</option>
+                <option ${p.type==='minio'?'selected':''} value="minio">MinIO</option>
+                <option ${p.type==='mcg'?'selected':''} value="mcg">MCG</option>
+                <option ${p.type==='generic'?'selected':''} value="generic">Generic S3</option>
+              </select>
+            </div>
+            <div class="field"><label>Endpoint</label><input class="input" id="pendpoint" placeholder="s3.amazonaws.com or host:port" value="${p.endpoint||''}"/></div>
+            <div class="field"><label>Region</label><input class="input" id="pregion" value="${p.region||''}"/></div>
+            <div class="field"><label>Use SSL</label><select id="pssl" class="input"><option ${p.useSSL?'selected':''} value="true">true</option><option ${!p.useSSL?'selected':''} value="false">false</option></select></div>
+          </div>
+          <div class="card" style="box-shadow:none">
+            <div class="field"><label>Access Key</label><input class="input" id="paccess" value="${p.accessKey||''}"/></div>
+            <div class="field"><label>Secret Key</label>
+              <div class="flex"><input type="password" class="input" id="psecret" value="${p.secretKey||''}"/><button class="btn" id="reveal">Show</button></div>
+            </div>
+            <div class="toolbar" style="margin-top:10px">
+              <button class="btn" id="cancel">Cancel</button>
+              <span class="grow"></span>
+              <button class="btn" id="test">Test</button>
+              <button class="btn primary" id="save">Save</button>
+            </div>
+          </div>
+        </div>`;
+      $('#cancel', f).onclick=()=>{ f.style.display='none' };
+      $('#reveal', f).onclick=()=>{ const i=$('#psecret', f); i.type = i.type==='password'? 'text':'password'; };
+      $('#test', f).onclick=async()=>{
+        const tmp = {
+          id: p.id,
+          name: $('#pname', f).value.trim(), type: $('#ptype', f).value,
+          endpoint: $('#pendpoint', f).value.trim(), region: $('#pregion', f).value.trim(),
+          useSSL: $('#pssl', f).value==='true', accessKey: $('#paccess', f).value, secretKey: $('#psecret', f).value
+        };
+        try{
+          // save temporarily if editing; otherwise persist to perform real test via API requires stored provider
+          if(!tmp.id){ toast('Save provider first to test.'); return }
+          const buckets = await api(`/api/v1/providers/${tmp.id}/buckets`);
+          toast(`Connection OK. Buckets: ${buckets.length}`);
+        }catch(e){ toast('Test failed: '+e) }
+      };
+      $('#save', f).onclick=async()=>{
+        const data = {
+          name: $('#pname', f).value.trim(), type: $('#ptype', f).value,
+          endpoint: $('#pendpoint', f).value.trim(), region: $('#pregion', f).value.trim(),
+          useSSL: $('#pssl', f).value==='true', accessKey: $('#paccess', f).value, secretKey: $('#psecret', f).value
+        };
+        const errs = [];
+        if(!data.name) errs.push('Name');
+        if(!data.endpoint) errs.push('Endpoint');
+        if(errs.length){ toast('Missing: '+errs.join(', ')); return }
+        try{
+          if(p.id) await api(`/api/v1/providers/${p.id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)});
+          else await api('/api/v1/providers', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)});
+          // Clear search filter to ensure new/updated provider is visible and close form
+          const sf = document.getElementById('providerSearch'); if (sf) sf.value = '';
+          f.style.display='none';
+          toast('Saved'); renderProviders(root);
+        }catch(e){ toast(String(e)) }
+      };
+    }
+  }
+
+  async function renderBuckets(root){
+    const providerId = sessionStorage.getItem('currentProvider');
+    const isViewer = currentUser && currentUser.role==='viewer';
+    root.innerHTML = `
+      <div class="toolbar">
+        <h2 style="margin:0">Buckets</h2>
+        <span class="grow"></span>
+        <select id="providerSelect" class="input" style="min-width:240px"></select>
+        <button class="btn" id="gotoProviders">Providers</button>
+        <button class="btn" id="refreshBuckets">Refresh</button>
+        ${isViewer? '': '<button class="btn primary" id="createBucket">Create Bucket</button>'}
+      </div>
+      <div id="buckets" class="cards"></div>
+    `;
+    $('#gotoProviders').onclick = ()=>{ location.hash = '#/providers' };
+    let providers = await api('/api/v1/providers');
+    if (!Array.isArray(providers)) { providers = providers ? [providers] : []; }
+    const sel = $('#providerSelect'); sel.innerHTML = providers.map(p=>`<option ${String(p.id)===String(providerId)?'selected':''} value="${p.id}">${p.name} — ${p.type}</option>`).join('');
+    sel.onchange = ()=>{ sessionStorage.setItem('currentProvider', sel.value); load(); };
+    const createBtn = $('#createBucket');
+    if (createBtn) createBtn.onclick = async ()=>{
+      if(!sel.value) return toast('Select provider');
+      const name = prompt('Bucket name'); if(!name) return;
+      const p = providers.find(x=>String(x.id)===String(sel.value));
+      let region = p && p.region || '';
+      if ((p && p.type === 'aws') && !region) {
+        region = prompt('AWS region (e.g., us-east-1):');
+        if (!region) { toast('Region is required for AWS'); return }
+      }
+      try{ await api(`/api/v1/providers/${sel.value}/buckets`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name, region})}); toast('Bucket created'); load(); }catch(e){ toast(String(e)) }
+    };
+    async function load(){
+      if(!sel.value){ $('#buckets').innerHTML = '<div class="empty">No provider selected</div>'; return }
+      let items = await api(`/api/v1/providers/${sel.value}/buckets?t=${Date.now()}`);
+      if (!Array.isArray(items)) { items = items ? [items] : []; }
+      const box = $('#buckets'); box.innerHTML='';
+      if(!items.length){ box.innerHTML='<div class="empty">No buckets</div>'; }
+      items.forEach(raw=>{
+        // Normalize bucket fields from various possible keys returned by backend/minio
+        const name = raw.name || raw.Name || raw.bucket || raw.Bucket || raw.objectName || raw.Key || '';
+        const cd = raw.creationDate || raw.CreationDate || raw.creation_date || raw.CreatedAt || raw.createdAt || null;
+        let createdText = '—';
+        if (cd) {
+          const d = new Date(cd);
+          if (!isNaN(d.getTime())) createdText = d.toLocaleString();
+        }
+        const card = document.createElement('div'); card.className='card';
+        card.innerHTML = `<div class="flex" style="justify-content:space-between">
+          <div><h3>${name}</h3><div class="muted">created ${createdText}</div></div>
+          <div class="toolbar">
+            <a class="btn" href="#/objects" data-bucket="${name}">Browse</a>
+            ${isViewer? '': '<button class="btn" data-del>Delete</button>'}
+          </div>
+        </div>`;
+        if (!isViewer) { card.querySelector('[data-del]').onclick = async ()=>{ if(!confirm('Delete bucket '+name+'?')) return; try{ await api(`/api/v1/providers/${sel.value}/buckets/${encodeURIComponent(name)}`, {method:'DELETE'}); toast('Deleted'); load(); }catch(e){ toast(String(e)) } }; }
+        card.querySelector('[href="#/objects"]').addEventListener('click',()=> sessionStorage.setItem('currentBucket', name));
+        box.appendChild(card);
+      })
+    }
+    $('#refreshBuckets').onclick = ()=> load();
+    if(sel.value) await load();
+  }
+
+  async function renderObjects(root){
+    const providerId = sessionStorage.getItem('currentProvider');
+    const bucket = sessionStorage.getItem('currentBucket');
+    const emptyState = !providerId || !bucket;
+    const isViewer = currentUser && currentUser.role==='viewer';
+    root.innerHTML = `
+      <div class="toolbar">
+        <h2 style="margin:0">Objects</h2>
+        <span class="grow"></span>
+        <button class="btn" id="choose">${emptyState ? 'Choose Provider/Bucket' : 'Change Provider/Bucket'}</button>
+        <input type="file" id="uploader" style="display:${emptyState ? 'none' : 'none'}"/>
+        ${isViewer? '': `<button class="btn primary" id="upload" ${emptyState ? 'disabled title="Select provider and bucket first"' : ''}>Upload</button>`}
+      </div>
+      <div class="card">
+        <div class="toolbar"><div class="muted" id="ctxInfo">Loading context…</div>
+        <span class="grow"></span>
+        <input class="input" placeholder="Prefix" id="prefix" ${emptyState ? 'disabled' : ''}> 
+        <label class="flex" style="gap:6px"><input type="checkbox" id="recursive" ${emptyState ? 'disabled' : ''}> recursive</label>
+        <button class="btn" id="refresh" ${emptyState ? 'disabled' : ''}>Refresh</button></div>
+        <div id="objs" style="margin-top:10px"></div>
+      </div>
+    `;
+    $('#choose').onclick = ()=>{ location.hash = '#/buckets'; };
+    { const upBtn = $('#upload'); if (upBtn) upBtn.onclick = ()=> $('#uploader').click(); }
+    $('#uploader').addEventListener('change', async (e)=>{
+      const f = e.target.files[0]; if(!f||!providerId||!bucket){ toast('Select provider and bucket first'); return }
+      // Build modal
+      let modal = document.getElementById('uploadModal');
+      if (!modal){ modal = document.createElement('div'); modal.id='uploadModal'; modal.className='modal'; document.body.appendChild(modal); }
+      modal.innerHTML = `<div class="box">
+        <h3>Uploading ${f.name}</h3>
+        <div class="muted-small" id="upStats">Preparing…</div>
+        <div class="progress" style="margin:10px 0 6px 0"><i id="upBar"></i></div>
+        <div class="toolbar"><button class="btn" id="upCancel">Cancel</button><span class="grow"></span><button class="btn" id="upHide">Hide</button></div>
+      </div>`;
+      modal.style.display='flex';
+      const bar = document.getElementById('upBar');
+      const stats = document.getElementById('upStats');
+      const cancelBtn = document.getElementById('upCancel');
+      const hideBtn = document.getElementById('upHide');
+
+      const total = f.size;
+      let uploaded = 0; let started = Date.now(); let lastT = started; let lastLoaded = 0;
+      const fmtBytes = (n)=>{ const u=['B','KB','MB','GB','TB']; let i=0, x=Number(n)||0; while(x>=1024&&i<u.length-1){ x/=1024; i++; } return x.toFixed(x<10&&i>0?1:0)+' '+u[i]; };
+      function update(){ const pct = total? Math.min(100, Math.round((uploaded/total)*100)): 0; const now=Date.now(); const dt=(now-started)/1000; const speed = dt>0? uploaded/dt:0; const eta = speed>0? (total-uploaded)/speed:0; bar.style.width = pct+'%'; stats.textContent = `${fmtBytes(uploaded)} / ${fmtBytes(total)} • ${pct}% • ${fmtBytes(speed)}/s • ETA ${eta>0? eta.toFixed(1):'-'}s`; if(uploadState){ uploadState.uploaded = uploaded; renderUploadDock(); } }
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `/api/v1/providers/${providerId}/buckets/${encodeURIComponent(bucket)}/upload`);
+      xhr.responseType = 'json';
+      // initialize upload state and dock
+      uploadState = { xhr, file: f, total, uploaded, started, modal };
+      renderUploadDock();
+
+      xhr.upload.onprogress = (ev)=>{ if (ev.lengthComputable){ uploaded = ev.loaded; } else { uploaded = Math.min(uploaded + (Date.now()-lastT)*1024, total||uploaded); } update(); lastT = Date.now(); lastLoaded = uploaded; };
+      xhr.onreadystatechange = ()=>{
+        if (xhr.readyState === 4){ if (xhr.status >= 200 && xhr.status < 300){ bar.style.width='100%'; stats.textContent = 'Processing…';
+            // After success, refresh list and close
+            (async ()=>{
+              toast('Uploaded');
+              const prevPrefix = $('#prefix').value; const prevRecursive = $('#recursive').checked;
+              $('#prefix').value = '';
+              $('#recursive').checked = true;
+              await load();
+              $('#prefix').value = prevPrefix;
+              $('#recursive').checked = prevRecursive;
+              modal.style.display='none';
+              // cleanup dock
+              hideUploadDock(); uploadState = null;
+            })();
+          } else {
+            const trace = xhr.getResponseHeader('X-Trace-Id') || '';
+            let msg = xhr.response && xhr.response.error? xhr.response.error : (xhr.responseText || `HTTP ${xhr.status}`);
+            stats.textContent = `Error: ${msg}` + (trace? ` • trace ${trace}`: '');
+            toast('Upload failed: '+msg);
+            hideUploadDock(); uploadState = null;
+          }
+        }
+      };
+      cancelBtn.onclick = ()=>{ try{ xhr.abort(); }catch{} modal.style.display='none'; hideUploadDock(); uploadState=null; toast('Upload canceled'); };
+      hideBtn.onclick = ()=>{ modal.style.display='none'; renderUploadDock(); };
+      const form = new FormData(); form.append('file', f); form.append('key', f.name);
+      xhr.send(form);
+    });
+    $('#refresh').onclick = ()=> load();
+
+    // Load provider/bucket context details for header
+    (async ()=>{
+      if(!providerId){ $('#ctxInfo').textContent = 'Provider: — • Bucket: —'; return }
+      try {
+        const prov = await api(`/api/v1/providers/${providerId}`);
+        $('#ctxInfo').innerHTML = `Provider: <b>${prov.name}</b> • Bucket: <b>${bucket||'—'}</b>`;
+      } catch { $('#ctxInfo').textContent = `Provider: ${providerId} • Bucket: ${bucket||'—'}`; }
+    })();
+
+    async function load(){
+      if(!providerId||!bucket){ $('#objs').innerHTML = '<div class="empty"><div style="font-size:18px;margin-bottom:6px">No bucket selected</div><div class="muted" style="margin-bottom:10px">Choose a provider and bucket to browse objects.</div><div class="toolbar" style="justify-content:center"><a class="btn primary" href="#/buckets">Open Buckets</a></div></div>'; return }
+      const prefix = $('#prefix').value; const recursive = $('#recursive').checked;
+      try{
+        let items = await api(`/api/v1/providers/${providerId}/buckets/${encodeURIComponent(bucket)}/objects?prefix=${encodeURIComponent(prefix)}&recursive=${recursive}&t=${Date.now()}`);
+        if (!Array.isArray(items)) { items = items ? [items] : []; }
+        const container = document.createElement('div');
+        const header = document.createElement('div'); header.className='row'; header.innerHTML = '<div class="muted">Key</div><div class="muted">Size</div><div class="muted">Last Modified</div><div class="muted">Actions</div>';
+        container.appendChild(header);
+        items.forEach(o=>{
+          const row = document.createElement('div'); row.className='row';
+          const size = humanFileSize(o.size||0);
+          const lm = o.lastModified? new Date(o.lastModified).toLocaleString() : '—';
+          const keyVal = (o.key||o.name||o.objectName||o.Key||'');
+          const actions = isViewer ? `<div class=\"toolbar actions\"><button class=\"btn\" data-dl>Download</button></div>` : `<div class=\"toolbar actions\"><button class=\"btn\" data-dl>Download</button><button class=\"btn\" data-del>Delete</button><button class=\"btn\" data-cp>Copy</button><button class=\"btn\" data-mv>Move</button></div>`;
+          row.innerHTML = `<div class=\"flex ellipsis\"><span>${keyVal}</span></div>
+            <div>${size}</div><div>${lm}</div>
+            ${actions}`;
+          row.querySelector('[data-dl]').onclick = ()=> window.location = `/api/v1/providers/${providerId}/buckets/${encodeURIComponent(bucket)}/download?key=${encodeURIComponent(keyVal)}`;
+          if (!isViewer){
+            row.querySelector('[data-del]').onclick = async ()=>{ if(!confirm('Delete object?')) return; try{ await api(`/api/v1/providers/${providerId}/buckets/${encodeURIComponent(bucket)}/objects?key=${encodeURIComponent(keyVal)}`, {method:'DELETE'}); toast('Deleted'); load(); }catch(e){ toast(String(e)) } };
+            row.querySelector('[data-mv]').onclick = async ()=>{
+              const key = keyVal;
+              try {
+                // Choose destination provider
+                let providers = await api('/api/v1/providers'); if (!Array.isArray(providers)) providers = providers ? [providers] : [];
+                const currentProv = providers.find(p=> String(p.id)===String(providerId));
+                const provNames = providers.map(p=> `${p.id}: ${p.name} (${p.type||'?'})`);
+                let pInput = prompt(`Move to provider (enter id or name)\n${provNames.join('\n')}`, currentProv? `${currentProv.id}`: (providers[0]? `${providers[0].id}`: ''));
+                if (pInput===null) return;
+                pInput = (pInput||'').trim();
+                let dstPid = null;
+                if (/^\d+$/.test(pInput)) { dstPid = pInput; } else { const m = providers.find(p=> (p.name||'').toLowerCase()===pInput.toLowerCase()); if(m) dstPid = m.id; }
+                if (!dstPid) { toast('Invalid provider'); return }
+                // Choose destination bucket from selected provider
+                let buckets = await api(`/api/v1/providers/${dstPid}/buckets`); if (!Array.isArray(buckets)) buckets = buckets ? [buckets] : [];
+                const names = buckets.map(b=> b.name).filter(n=> !(String(dstPid)===String(providerId) && n===bucket));
+                if (!names.length) { toast('No buckets available on destination provider'); return }
+                const dstBucket = prompt('Move to bucket:', names[0]); if(!dstBucket) return;
+                const dstKey = prompt('Destination key:', key) || key;
+                const body = {srcKey: key, dstBucket, dstKey, dstProviderId: Number(dstPid)};
+                // Build modal
+                let modal = document.getElementById('transferModal');
+                if (!modal){ modal = document.createElement('div'); modal.id='transferModal'; modal.className='modal'; document.body.appendChild(modal); }
+                modal.innerHTML = `<div class="box">
+                  <h3>Moving</h3>
+                  <div class="muted-small" id="trStats">${key} → ${dstBucket} ${String(dstPid)===String(providerId)?'':'(cross-provider)'} • starting…</div>
+                  <div class="progress indet" id="trProg" style="margin:10px 0 6px 0"><i id="trBar" style="width:0%"></i></div>
+                  <div class="toolbar"><button class="btn" id="trCancel">Cancel</button><span class="grow"></span><button class="btn" id="trHide">Hide</button></div>
+                </div>`;
+                modal.style.display='flex';
+                const cancelBtn = document.getElementById('trCancel');
+                const hideBtn = document.getElementById('trHide');
+                const stats = document.getElementById('trStats');
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', `/api/v1/providers/${providerId}/buckets/${encodeURIComponent(bucket)}/move`);
+                xhr.setRequestHeader('Content-Type','application/json');
+                // init transfer dock state
+                transferState = { xhr, kind: 'Move', title: 'Moving object', subtitle: `${key} → ${dstBucket}`, started: Date.now(), modal, total: 0, done: 0 };
+                renderTransferDock();
+                const fmtBytes = (n)=>{ const u=['B','KB','MB','GB','TB']; let i=0, x=Number(n)||0; while(x>=1024&&i<u.length-1){ x/=1024; i++; } return x.toFixed(x<10&&i>0?1:0)+' '+u[i]; };
+                // Robust NDJSON stream parser with incremental offset
+                let parsedIdx = 0;
+                function processStream(){
+                  try{
+                    const txt = xhr.responseText || '';
+                    if (!txt) return;
+                    const lastNl = txt.lastIndexOf('\n');
+                    const upto = lastNl >= 0 ? lastNl + 1 : 0;
+                    if (upto <= parsedIdx) return;
+                    const chunk = txt.slice(parsedIdx, upto);
+                    parsedIdx = upto;
+                    const lines = chunk.split('\n').filter(Boolean);
+                    for (const line of lines){
+                      let ev; try { ev = JSON.parse(line); } catch { continue }
+                      if (typeof ev.total === 'number') transferState.total = ev.total;
+                      if (typeof ev.bytes === 'number') transferState.done = ev.bytes;
+                      const pct = transferState.total>0 ? Math.min(100, Math.round((transferState.done/transferState.total)*100)) : 0;
+                      const bar = document.getElementById('trBar'); if (bar) bar.style.width = pct+'%';
+                      const prog = document.getElementById('trProg'); if (prog) { if (transferState.total>0) prog.classList.remove('indet'); else prog.classList.add('indet'); }
+                      const totalTxt = transferState.total>0 ? fmtBytes(transferState.total) : 'unknown';
+                      const pctTxt = transferState.total>0 ? (pct+'%') : '—';
+                      stats.textContent = `${key} → ${dstBucket} • ${fmtBytes(transferState.done)} / ${totalTxt} • ${pctTxt}`;
+                      renderTransferDock();
+                      if (ev.done){ stats.textContent='Completed'; modal.style.display='none'; hideTransferDock(); transferState=null; load(); return }
+                      if (ev.error){ stats.textContent = `Error: ${ev.error}`; toast('Move failed: '+ev.error); hideTransferDock(); transferState=null; return }
+                    }
+                  }catch{}
+                }
+                xhr.onprogress = processStream;
+                xhr.onreadystatechange = ()=>{
+                  if (xhr.readyState === 3) { processStream(); return }
+                  if (xhr.readyState === 4){
+                    if (xhr.status >= 200 && xhr.status < 300){
+                      processStream();
+                      if (transferState){ stats.textContent='Completed'; modal.style.display='none'; hideTransferDock(); transferState=null; load(); }
+                    } else {
+                      const trace = xhr.getResponseHeader('X-Trace-Id') || '';
+                      const msg = xhr.responseText || `HTTP ${xhr.status}`;
+                      stats.textContent = `Error: ${msg}` + (trace? ` • trace ${trace}`: ''); toast('Move failed: '+msg); hideTransferDock(); transferState=null;
+                    }
+                  }
+                };
+                cancelBtn.onclick = ()=>{ try{ xhr.abort(); }catch{} modal.style.display='none'; hideTransferDock(); transferState=null; toast('Move canceled'); };
+                hideBtn.onclick = ()=>{ modal.style.display='none'; renderTransferDock(); };
+                xhr.send(JSON.stringify(body));
+              } catch(e) { toast(String(e)) }
+            };
+            row.querySelector('[data-cp]').onclick = async ()=>{
+              const key = keyVal;
+              try {
+                // Choose destination provider
+                let providers = await api('/api/v1/providers'); if (!Array.isArray(providers)) providers = providers ? [providers] : [];
+                const currentProv = providers.find(p=> String(p.id)===String(providerId));
+                const provNames = providers.map(p=> `${p.id}: ${p.name} (${p.type||'?'})`);
+                let pInput = prompt(`Copy to provider (enter id or name)\n${provNames.join('\n')}`, currentProv? `${currentProv.id}`: (providers[0]? `${providers[0].id}`: ''));
+                if (pInput===null) return;
+                pInput = (pInput||'').trim();
+                let dstPid = null;
+                if (/^\d+$/.test(pInput)) { dstPid = pInput; } else { const m = providers.find(p=> (p.name||'').toLowerCase()===pInput.toLowerCase()); if(m) dstPid = m.id; }
+                if (!dstPid) { toast('Invalid provider'); return }
+                // Choose destination bucket
+                let buckets = await api(`/api/v1/providers/${dstPid}/buckets`); if (!Array.isArray(buckets)) buckets = buckets ? [buckets] : [];
+                const names = buckets.map(b=> b.name);
+                const suggested = names.find(n=> !(String(dstPid)===String(providerId) && n===bucket)) || names[0];
+                const dstBucket = prompt('Copy to bucket:', suggested); if(!dstBucket) return;
+                const dstKey = prompt('Destination key:', key) || key;
+                const body = {srcKey: key, dstBucket, dstKey, dstProviderId: Number(dstPid)};
+                // Build modal
+                let modal = document.getElementById('transferModal');
+                if (!modal){ modal = document.createElement('div'); modal.id='transferModal'; modal.className='modal'; document.body.appendChild(modal); }
+                modal.innerHTML = `<div class="box">
+                  <h3>Copying</h3>
+                  <div class="muted-small" id="trStats">${key} → ${dstBucket} ${String(dstPid)===String(providerId)?'':'(cross-provider)'} • starting…</div>
+                  <div class="progress indet" id="trProg" style="margin:10px 0 6px 0"><i id="trBar" style="width:0%"></i></div>
+                  <div class="toolbar"><button class="btn" id="trCancel">Cancel</button><span class="grow"></span><button class="btn" id="trHide">Hide</button></div>
+                </div>`;
+                modal.style.display='flex';
+                const cancelBtn = document.getElementById('trCancel');
+                const hideBtn = document.getElementById('trHide');
+                const stats = document.getElementById('trStats');
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', `/api/v1/providers/${providerId}/buckets/${encodeURIComponent(bucket)}/copy`);
+                xhr.setRequestHeader('Content-Type','application/json');
+                // init transfer dock state
+                transferState = { xhr, kind: 'Copy', title: 'Copying object', subtitle: `${key} → ${dstBucket}`, started: Date.now(), modal, total: 0, done: 0 };
+                renderTransferDock();
+                const fmtBytes = (n)=>{ const u=['B','KB','MB','GB','TB']; let i=0, x=Number(n)||0; while(x>=1024&&i<u.length-1){ x/=1024; i++; } return x.toFixed(x<10&&i>0?1:0)+' '+u[i]; };
+                // Robust NDJSON stream parser with incremental offset
+                let parsedIdx = 0;
+                function processStream(){
+                  try{
+                    const txt = xhr.responseText || '';
+                    if (!txt) return;
+                    const lastNl = txt.lastIndexOf('\n');
+                    const upto = lastNl >= 0 ? lastNl + 1 : 0;
+                    if (upto <= parsedIdx) return;
+                    const chunk = txt.slice(parsedIdx, upto);
+                    parsedIdx = upto;
+                    const lines = chunk.split('\n').filter(Boolean);
+                    for (const line of lines){
+                      let ev; try { ev = JSON.parse(line); } catch { continue }
+                      if (typeof ev.total === 'number') transferState.total = ev.total;
+                      if (typeof ev.bytes === 'number') transferState.done = ev.bytes;
+                      const pct = transferState.total>0 ? Math.min(100, Math.round((transferState.done/transferState.total)*100)) : 0;
+                      const bar = document.getElementById('trBar'); if (bar) bar.style.width = pct+'%';
+                      stats.textContent = `${key} → ${dstBucket} • ${fmtBytes(transferState.done)} / ${fmtBytes(transferState.total||0)} • ${pct}%`;
+                      renderTransferDock();
+                      if (ev.done){ stats.textContent='Completed'; toast('Copied'); modal.style.display='none'; hideTransferDock(); transferState=null; load(); return }
+                      if (ev.error){ stats.textContent = `Error: ${ev.error}`; toast('Copy failed: '+ev.error); hideTransferDock(); transferState=null; return }
+                    }
+                  }catch{}
+                }
+                xhr.onprogress = processStream;
+                xhr.onreadystatechange = ()=>{
+                  if (xhr.readyState === 3) { processStream(); return }
+                  if (xhr.readyState === 4){
+                    if (xhr.status >= 200 && xhr.status < 300){
+                      processStream();
+                      if (transferState){ stats.textContent='Completed'; toast('Copied'); modal.style.display='none'; hideTransferDock(); transferState=null; load(); }
+                    } else {
+                      const trace = xhr.getResponseHeader('X-Trace-Id') || '';
+                      const msg = xhr.responseText || `HTTP ${xhr.status}`;
+                      stats.textContent = `Error: ${msg}` + (trace? ` • trace ${trace}`: ''); toast('Copy failed: '+msg); hideTransferDock(); transferState=null;
+                    }
+                  }
+                };
+                cancelBtn.onclick = ()=>{ try{ xhr.abort(); }catch{} modal.style.display='none'; hideTransferDock(); transferState=null; toast('Copy canceled'); };
+                hideBtn.onclick = ()=>{ modal.style.display='none'; renderTransferDock(); };
+                xhr.send(JSON.stringify(body));
+              } catch(e) { toast(String(e)) }
+            };
+          }
+          container.appendChild(row);
+        });
+        $('#objs').innerHTML=''; $('#objs').appendChild(container);
+      }catch(e){
+        const msg = String(e||'');
+        const lower = msg.toLowerCase();
+        let nice = false;
+        if (lower.includes('bucket not found') || lower.includes('nosuchbucket') || lower.includes('bucket does not exist')){
+          // Clear invalid selection and show gentle empty state
+          sessionStorage.removeItem('currentBucket');
+          nice = true;
+          $('#objs').innerHTML = `<div class='empty'>
+            <div style='font-size:18px;margin-bottom:6px'>Bucket not found</div>
+            <div class='muted' style='margin-bottom:10px'>The previously selected bucket no longer exists. Please choose another bucket.</div>
+            <div class='toolbar' style='justify-content:center'><a class='btn primary' href='#/buckets'>Open Buckets</a></div>
+          </div>`;
+          // also update context header
+          const ci = document.getElementById('ctxInfo'); if (ci) ci.innerHTML = `Provider: <b>${providerId||'—'}</b> • Bucket: <b>—</b>`;
+        }
+        if (!nice){ $('#objs').innerHTML = `<div class='empty'>Error: ${msg}</div>`; }
+      }
+    }
+    function humanFileSize(bytes){
+      const units=['B','KB','MB','GB','TB']; let i=0; let n=bytes; while(n>=1024&&i<units.length-1){ n/=1024; i++; } return `${n.toFixed(n<10&&i>0?1:0)} ${units[i]}`;
+    }
+    await load();
+  }
+
+  async function renderUsers(root){
+    root.innerHTML = `
+      <div class="toolbar">
+        <h2 style="margin:0">Users</h2>
+        <span class="tag" id="usersCount"></span>
+        <span class="grow"></span>
+        <input id="userSearch" class="input" placeholder="Filter by email or role" style="min-width:260px" />
+        <button class="btn primary" id="addUser">Add User</button>
+      </div>
+      <div id="userForm" class="card" style="display:none"></div>
+      <div id="users"></div>`;
+
+    $('#userSearch').addEventListener('input', ()=> load());
+    $('#addUser').onclick = ()=> showForm();
+
+    function showForm(u={}){
+      const f = $('#userForm'); f.style.display='block';
+      f.innerHTML = `
+        <h3>${u.id? 'Edit':'New'} User</h3>
+        <div class="split">
+          <div class="card" style="box-shadow:none">
+            <div class="field"><label>Email</label><input class="input" id="uemail" value="${u.email||''}" placeholder="user@example.com"/></div>
+            <div class="field"><label>Role</label>
+              <select id="urole" class="input">
+                <option ${u.role==='admin'?'selected':''} value="admin">admin</option>
+                <option ${u.role==='viewer'?'selected':''} value="viewer">viewer</option>
+                <option ${u.role==='editor'?'selected':''} value="editor">editor</option>
+              </select>
+            </div>
+          </div>
+          <div class="card" style="box-shadow:none">
+            <div class="field"><label>${u.id? 'Reset Password (optional)':'Password'}</label><input type="password" class="input" id="upass" placeholder="${u.id? '(leave blank to keep)':''}"/></div>
+            <div class="toolbar" style="margin-top:10px">
+              <button class="btn" id="cancel">Cancel</button>
+              <span class="grow"></span>
+              <button class="btn primary" id="save">Save</button>
+            </div>
+          </div>
+        </div>`;
+      $('#cancel', f).onclick = ()=>{ f.style.display='none' };
+      $('#save', f).onclick = async ()=>{
+        const email = $('#uemail', f).value.trim();
+        const role = $('#urole', f).value;
+        const password = $('#upass', f).value;
+        if (!email) { toast('Email is required'); return }
+        try{
+          if (u.id){
+            const body = {email, role}; if (password) body.password = password;
+            await api(`/api/v1/users/${u.id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+          } else {
+            if (!password){ toast('Password is required'); return }
+            await api('/api/v1/users/', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email, password, role})});
+          }
+          toast('Saved'); f.style.display='none'; load();
+        }catch(e){ toast(String(e)) }
+      };
+    }
+
+    async function load(){
+      let users = await api('/api/v1/users/');
+      if (!Array.isArray(users)) users = users ? [users] : [];
+      const q = ($('#userSearch').value||'').toLowerCase();
+      users = users.filter(u => (`${u.email||''} ${u.role||''}`).toLowerCase().includes(q));
+      $('#usersCount').textContent = users.length? `${users.length}` : '';
+      const box = $('#users'); box.innerHTML='';
+      const header = document.createElement('div'); header.className='row'; header.style.gridTemplateColumns='2fr 1fr 1fr 200px'; header.innerHTML = '<div class="muted">Email</div><div class="muted">Role</div><div class="muted">Created</div><div class="muted">Actions</div>';
+      box.appendChild(header);
+      if (!users.length){ box.innerHTML += '<div class="empty">No users</div>'; return }
+      users.forEach(u=>{
+        const row = document.createElement('div'); row.className='row';
+        row.style.gridTemplateColumns='2fr 1fr 1fr 200px';
+        row.innerHTML = `<div>${u.email}</div><div><span class="tag">${u.role||'—'}</span></div><div>${u.createdAt? new Date(u.createdAt).toLocaleString(): '—'}</div>
+          <div class="toolbar"><button class="btn" data-edit>Edit</button><button class="btn" data-pass>Reset Password</button><button class="btn" data-del>Delete</button></div>`;
+        row.querySelector('[data-edit]').onclick = ()=> showForm(u);
+        row.querySelector('[data-pass]').onclick = async ()=>{
+          const np = prompt('New password for '+u.email+':'); if (!np) return;
+          try{ await api(`/api/v1/users/${u.id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password: np})}); toast('Password updated'); }catch(e){ toast(String(e)) }
+        };
+        row.querySelector('[data-del]').onclick = async ()=>{
+          if(!confirm('Delete user '+u.email+'?')) return;
+          try{ await api(`/api/v1/users/${u.id}`, {method:'DELETE'}); toast('Deleted'); load(); }catch(e){ toast(String(e)) }
+        };
+        box.appendChild(row);
+      })
+    }
+    await load();
+  }
+
+  async function renderAPIExplorer(root){
+    // Visible to admin/editor; backend endpoint is protected as well
+    root.innerHTML = `
+      <div class="toolbar">
+        <h2 style="margin:0">API Explorer</h2>
+        <span class="grow"></span>
+        <a class="btn" href="/api/v1/openapi.json" target="_blank">OpenAPI JSON</a>
+      </div>
+      <div class="card">
+        <div id="swagger-ui"></div>
+      </div>`;
+    // Inject Swagger UI assets once
+    function ensureCss(){ if (document.getElementById('swagger-css')) return; const link=document.createElement('link'); link.id='swagger-css'; link.rel='stylesheet'; link.href='https://unpkg.com/swagger-ui-dist@5/swagger-ui.css'; document.head.appendChild(link); }
+    function ensureJs(){ return new Promise((resolve)=>{ if (window.SwaggerUIBundle) return resolve(); const s=document.createElement('script'); s.src='https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js'; s.onload=()=>resolve(); document.body.appendChild(s); }); }
+    ensureCss(); await ensureJs();
+    try{
+      const ui = window.SwaggerUIBundle({
+        url: '/api/v1/openapi.json',
+        dom_id: '#swagger-ui',
+        presets: [SwaggerUIBundle.presets.apis],
+        layout: 'BaseLayout',
+        deepLinking: true,
+        docExpansion: 'none',
+        defaultModelsExpandDepth: 1,
+      });
+      window.__swagger = ui;
+    }catch(e){ document.getElementById('swagger-ui').innerHTML = `<div class='muted'>Failed to load Swagger UI: ${e}</div>` }
+  }
+
+  async function renderLogin(root){
+    // fetch public federation config (sanitized) to decide whether to show OIDC button
+    let ac = null; try { ac = await fetch('/api/v1/auth/fed/public').then(r=>r.ok?r.json():null); } catch {}
+    // check bootstrap status to decide showing temp password hint
+    let bs = null; try { bs = await fetch('/api/v1/auth/bootstrap').then(r=>r.ok?r.json():{showTempNotice:false}); } catch { bs = {showTempNotice:false}; }
+    // hide search bar for a cleaner login view
+    const searchBar = document.querySelector('.search'); if (searchBar) searchBar.style.display = 'none';
+    root.innerHTML = `
+      <section class="login-section">
+        <div class="login-card">
+          <div class="login-grid">
+            <div class="login-form-side">
+              <div class="flex" style="gap:12px;align-items:center;margin-bottom:10px">
+                <img src="/img/logo/logo.png" alt="logo" style="width:36px;height:36px;border-radius:10px;object-fit:cover;box-shadow:var(--shadow)"/>
+                <div style="font-size:20px;font-weight:700">Welcome to Hermes</div>
+              </div>
+              <div class="muted" style="margin:-2px 0 14px 0">Cloud Storage Manager for S3, MinIO, MCG and more</div>
+              <h2 style="margin:6px 0 14px 0">Sign in</h2>
+              <div class="field"><label>Email</label><input id="lemail" class="input" value="admin@local" placeholder="you@example.com"/></div>
+              <div class="field"><label>Password</label><input id="lpass" type="password" class="input" placeholder="••••••••"/></div>
+              ${bs && bs.showTempNotice ? `<div class="muted" style="margin-top:8px">First run: a default admin was created with a temporary password (see server logs). This notice disappears after you change it.</div>` : ''}
+              <div class="toolbar" style="margin-top:16px">
+                <button class="btn primary lg" id="lgo" style="width:200px;justify-content:center">Login</button>
+                ${ac && ac.enabled && ac.mode==='oidc' ? `<a class="btn" style="justify-content:center" href="/api/v1/auth/oidc/start">Login with OIDC</a>` : ''}
+              </div>
+              <div class="muted-small" style="margin-top:12px">By continuing you agree to the acceptable use policy.</div>
+            </div>
+            <div class="login-hero-side">
+              <div style="text-align:center;padding:26px">
+                <div style="font-weight:700;font-size:18px;margin-bottom:6px">Manage your S3 worlds</div>
+                <div class="muted" style="max-width:300px;margin:0 auto">Buckets, objects, tracing, and insights — all in one modern UI. Light & dark theme supported.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>`;
+    const go = ()=> $('#lgo').click();
+    $('#lgo').onclick = async ()=>{
+      try{
+        const u = await authLogin($('#lemail').value.trim(), $('#lpass').value);
+        if (u.mustChangePassword){
+          await renderChangePassword(root);
+        } else {
+          // restore search bar
+          const sb = document.querySelector('.search'); if (sb) sb.style.display='';
+          location.hash = '#/dashboard'; render();
+        }
+      }catch(e){ toast(String(e)) }
+    };
+    // submit on Enter
+    $('#lpass').addEventListener('keydown', (e)=>{ if(e.key==='Enter') go(); });
+  }
+
+  async function renderChangePassword(root){
+    root.innerHTML = `
+      <div class="cards">
+        <div class="card" style="max-width:420px;margin:40px auto">
+          <h3>Change Password</h3>
+          <div class="muted">You must change your temporary password.</div>
+          <div class="field"><label>Current Password</label><input id="opass" type="password" class="input"/></div>
+          <div class="field"><label>New Password</label><input id="npass" type="password" class="input"/></div>
+          <div class="toolbar" style="margin-top:10px"><button class="btn" id="back">Back</button><span class="grow"></span><button class="btn primary" id="savepass">Update</button></div>
+        </div>
+      </div>`;
+    $('#back').onclick = ()=> { currentUser=null; authLogout(); };
+    $('#savepass').onclick = async ()=>{
+      try{
+        const body = {OldPassword: $('#opass').value, NewPassword: $('#npass').value};
+        const res = await fetch('/api/v1/auth/change-password', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+        if(!res.ok) throw new Error(await res.text());
+        toast('Password updated'); await authMe(); location.hash='#/dashboard'; render();
+      }catch(e){ toast(String(e)) }
+    }
+  }
+
+  async function renderSettings(root){
+    // Layout: make Settings widgets more beautiful and readable
+    root.innerHTML = `
+      <div class="settings-compact">
+        <div class="cards" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">
+          <div class="card">
+            <h3>🩺 System Health</h3>
+            <div class="muted">Live checks to <code>/health</code> with a compact latency chart</div>
+            <div class="toolbar" style="margin:8px 0">
+              <span id="hStatus" class="tag" style="font-weight:600">—</span>
+              <span id="hStats" class="muted-small">waiting…</span>
+              <span class="grow"></span>
+              <button class="btn sm" id="hRefresh">Check Now</button>
+              <label class="flex" style="gap:6px"><input type="checkbox" id="hAuto"> auto</label>
+            </div>
+            <canvas id="hChart" width="960" height="120" style="width:100%;height:120px"></canvas>
+          </div>
+          <div class="card">
+            <h3>ℹ️ About</h3>
+            <div class="muted">Hermes v0.1.0 — S3-compatible management (MinIO, AWS, MCG, Generic). Compact Settings layout.</div>
+            <div class="muted-small" style="margin-top:6px">Tip: Toggle light/dark theme from the header. Observability, Tracing and Logging are in the sidebar.</div>
+          </div>
+        </div>
+        <div class="cards" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">
+          <div class="card">
+            <h3>🔐 Authentication</h3>
+            <div class="muted" style="margin-bottom:6px">Configure local/OIDC/SAML and role mapping</div>
+            <div id="authcfg"></div>
+          </div>
+        </div>
+      </div>`;
+
+    // ----- Health visualization -----
+    // clear previous intervals (if any)
+    if (!window.__settingsIntervals) window.__settingsIntervals = [];
+    window.__settingsIntervals.forEach(id=> clearInterval(id));
+    window.__settingsIntervals = [];
+    const hArr = [];
+    const pushSample = (arr, v, max=120)=>{ arr.push(v); if(arr.length>max) arr.shift(); };
+    const pctl = (arr, p)=>{ if(!arr.length) return 0; const a=[...arr].sort((a,b)=>a-b); const idx=Math.round((p/100)*(a.length-1)); return a[Math.max(0, Math.min(a.length-1, idx))] };
+    function fitCanvas(canvas){ const dpr=window.devicePixelRatio||1; const w=canvas.clientWidth||canvas.width; const h=canvas.clientHeight||canvas.height; canvas.width=Math.max(1,Math.floor(w*dpr)); canvas.height=Math.max(1,Math.floor(h*dpr)); const ctx=canvas.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); return {ctx,w:canvas.width/dpr,h:canvas.height/dpr}; }
+    function drawSparkline(canvas, vals, color){ const {ctx,w,h}=fitCanvas(canvas); ctx.clearRect(0,0,w,h); if(!vals.length) return; const n=vals.length; const max=Math.max(...vals); const min=Math.min(...vals); const pad=8; ctx.strokeStyle='rgba(127,127,127,.18)'; ctx.lineWidth=1; ctx.beginPath(); for(let i=0;i<=4;i++){ const y=pad+(h-2*pad)*(i/4); ctx.moveTo(pad,y); ctx.lineTo(w-pad,y);} ctx.stroke(); ctx.strokeStyle=color||getComputedStyle(document.body).getPropertyValue('--primary')||'#6366f1'; ctx.lineWidth=2.2; ctx.beginPath(); for(let i=0;i<n;i++){ const x=pad+(w-2*pad)*(i/(n-1)); const v=vals[i]; const y=h-pad-(h-2*pad)*((v-min)/Math.max(1e-6,(max-min))); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);} ctx.stroke(); }
+    async function ping(){ const t0=performance.now(); let ok=false; let status=0; try{ const res = await fetch('/health', {cache:'no-store'}); status=res.status; ok=res.ok; await res.text(); }catch{} const ms=performance.now()-t0; pushSample(hArr, ms); const hs=document.getElementById('hStatus'); const st=document.getElementById('hStats'); if(hs){ const color = ok? '#16a34a':'#ef4444'; hs.style.borderColor=color; hs.style.color=color; hs.textContent = ok? 'UP':'DOWN'; } if(st){ const p50=pctl(hArr,50).toFixed(0); const p95=pctl(hArr,95).toFixed(0); const last = hArr.length? hArr[hArr.length-1].toFixed(0) : '0'; st.innerHTML = `last <b>${last} ms</b> • p50 <b>${p50} ms</b> • p95 <b>${p95} ms</b> • status ${status||'—'}`; } const c=document.getElementById('hChart'); if(c) drawSparkline(c, hArr, ok? '#22c55e':'#ef4444'); }
+    document.getElementById('hRefresh').onclick = ping;
+    const hAuto = document.getElementById('hAuto'); if (hAuto){ hAuto.checked = true; const hook=()=>{ if(hAuto.checked){ ping(); const id=setInterval(ping, 5000); window.__settingsIntervals.push(id);} else { window.__settingsIntervals.forEach(id=> clearInterval(id)); window.__settingsIntervals=[]; } }; hAuto.onchange = hook; hook(); }
+    window.addEventListener('resize', ()=>{ try{ const c=document.getElementById('hChart'); if(c) drawSparkline(c, hArr, '#22c55e'); }catch{} });
+
+    // ----- Load and render auth config (admin-only endpoint) -----
+    try{
+      const ac = await api('/api/v1/auth/fed/config');
+      const el = document.getElementById('authcfg');
+      el.innerHTML = `
+        <div class="split">
+          <div class="card" style="box-shadow:none">
+            <div class="field"><label>Mode</label>
+              <select id="amode" class="input">
+                <option value="local" ${ac.mode==='local'?'selected':''}>local</option>
+                <option value="oidc" ${ac.mode==='oidc'?'selected':''}>oidc</option>
+                <option value="saml" ${ac.mode==='saml'?'selected':''}>saml</option>
+              </select>
+            </div>
+            <div class="field"><label>Enabled</label>
+              <select id="aenabled" class="input"><option value="true" ${ac.enabled?'selected':''}>true</option><option value="false" ${!ac.enabled?'selected':''}>false</option></select>
+            </div>
+            <div class="field"><label>Default Role</label>
+              <select id="adefrole" class="input">
+                <option ${ac.defaultRole==='admin'?'selected':''} value="admin">admin</option>
+                <option ${ac.defaultRole==='editor'?'selected':''} value="editor">editor</option>
+                <option ${ac.defaultRole==='viewer'?'selected':''} value="viewer">viewer</option>
+              </select>
+            </div>
+          </div>
+          <div class="card" style="box-shadow:none">
+            <div class="split" style="grid-template-columns:1fr 1fr; gap:12px">
+              <div class="field"><label>OIDC Issuer</label><input id="aissuer" class="input" value="${ac.oidcIssuer||''}" placeholder="https://tenant.auth0.com/ or https://keycloak/realms/..."/></div>
+              <div class="field"><label>Client ID</label><input id="aclient" class="input" value="${ac.oidcClientId||''}"/></div>
+              <div class="field"><label>Client Secret</label><input id="asecret" type="password" class="input" value="${ac.oidcClientSecret||''}"/></div>
+              <div class="field"><label>Scopes</label><input id="ascope" class="input" value="${ac.oidcScope||'openid email profile'}"/></div>
+              <div class="field" style="grid-column:1/-1"><label>Redirect URL</label><input id="aredirect" class="input" value="${ac.oidcRedirectUrl||location.origin+'/api/v1/auth/oidc/callback'}"/></div>
+            </div>
+            <details style="margin-top:8px">
+              <summary class="muted">Advanced mapping</summary>
+              <div class="split" style="grid-template-columns:1fr 1fr; gap:12px; margin-top:8px">
+                <div class="field"><label>OIDC Role Claim</label><input id="aOidcRoleClaim" class="input" value="${ac.oidcRoleClaim||''}" placeholder="e.g., role or https://…/roles"/></div>
+                <div class="field"><label>OIDC Group Claim</label><input id="aOidcGroupClaim" class="input" value="${ac.oidcGroupClaim||''}" placeholder="e.g., groups"/></div>
+                <div class="field"><label>Admin values</label><input id="aOidcAdminVals" class="input" value="${ac.oidcAdminValues||''}" placeholder="admin, s3-admin, …"/></div>
+                <div class="field"><label>Editor values</label><input id="aOidcEditorVals" class="input" value="${ac.oidcEditorValues||''}" placeholder="editor, s3-editor, …"/></div>
+                <div class="field"><label>Viewer values</label><input id="aOidcViewerVals" class="input" value="${ac.oidcViewerValues||''}" placeholder="viewer, read-only, …"/></div>
+                <div class="field"><label>Update role on login</label>
+                  <select id="aOidcUpdateOnLogin" class="input"><option value="true" ${ac.oidcUpdateRoleOnLogin?'selected':''}>true</option><option value="false" ${!ac.oidcUpdateRoleOnLogin?'selected':''}>false</option></select>
+                </div>
+              </div>
+              <div class="split" style="grid-template-columns:1fr 1fr; gap:12px; margin-top:8px">
+                <div class="field"><label>SAML Metadata URL</label><input id="aSamlMeta" class="input" value="${ac.samlMetadataUrl||''}" placeholder="https://idp/metadata"/></div>
+                <div class="field"><label>SAML Role Claim</label><input id="aSamlRoleClaim" class="input" value="${ac.samlRoleClaim||''}"/></div>
+                <div class="field"><label>SAML Group Claim</label><input id="aSamlGroupClaim" class="input" value="${ac.samlGroupClaim||''}"/></div>
+                <div class="field"><label>SAML Admin values</label><input id="aSamlAdminVals" class="input" value="${ac.samlAdminValues||''}"/></div>
+                <div class="field"><label>SAML Editor values</label><input id="aSamlEditorVals" class="input" value="${ac.samlEditorValues||''}"/></div>
+                <div class="field"><label>SAML Viewer values</label><input id="aSamlViewerVals" class="input" value="${ac.samlViewerValues||''}"/></div>
+              </div>
+            </details>
+            <div class="toolbar" style="margin-top:10px">
+              <span class="grow"></span>
+              <button class="btn primary sm" id="asave">Save</button>
+            </div>
+          </div>
+        </div>`;
+      document.getElementById('asave').onclick = async ()=>{
+        const body = {
+          mode: document.getElementById('amode').value,
+          enabled: document.getElementById('aenabled').value==='true',
+          defaultRole: document.getElementById('adefrole').value,
+          oidcIssuer: document.getElementById('aissuer').value.trim(),
+          oidcClientId: document.getElementById('aclient').value.trim(),
+          oidcClientSecret: document.getElementById('asecret').value,
+          oidcScope: document.getElementById('ascope').value.trim(),
+          oidcRedirectUrl: document.getElementById('aredirect').value.trim(),
+          oidcRoleClaim: document.getElementById('aOidcRoleClaim').value.trim(),
+          oidcGroupClaim: document.getElementById('aOidcGroupClaim').value.trim(),
+          oidcAdminValues: document.getElementById('aOidcAdminVals').value.trim(),
+          oidcEditorValues: document.getElementById('aOidcEditorVals').value.trim(),
+          oidcViewerValues: document.getElementById('aOidcViewerVals').value.trim(),
+          oidcUpdateRoleOnLogin: document.getElementById('aOidcUpdateOnLogin').value==='true',
+          samlMetadataUrl: document.getElementById('aSamlMeta').value.trim(),
+          samlRoleClaim: document.getElementById('aSamlRoleClaim').value.trim(),
+          samlGroupClaim: document.getElementById('aSamlGroupClaim').value.trim(),
+          samlAdminValues: document.getElementById('aSamlAdminVals').value.trim(),
+          samlEditorValues: document.getElementById('aSamlEditorVals').value.trim(),
+          samlViewerValues: document.getElementById('aSamlViewerVals').value.trim(),
+        };
+        try{ await api('/api/v1/auth/fed/config', {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}); toast('Auth config saved'); }
+        catch(e){ toast(String(e)) }
+      };
+    }catch(e){
+      const box = document.getElementById('authcfg'); if (box) box.innerHTML = `<div class="muted">You may need admin access to view/update auth configuration. ${String(e)}</div>`;
+    }
+  }
+
+  function renderObjectsPlaceholder(){ /* not used; full renderObjects implemented */ }
+
+  async function renderTracing(root){
+    root.innerHTML = `
+      <div class="toolbar">
+        <h2 style="margin:0">Tracing</h2>
+        <span class="grow"></span>
+        <input id="tFilter" class="input" placeholder="Filter path/status/user" style="min-width:260px"/>
+        <button class="btn" id="tRefresh">Refresh</button>
+        <label class="flex" style="gap:6px"><input type="checkbox" id="tAuto"> auto-refresh</label>
+      </div>
+      <div class="card" id="tList">Loading…</div>
+      <div class="card" id="tDetail" style="display:none"></div>
+    `;
+    const listEl = document.getElementById('tList');
+    const detEl = document.getElementById('tDetail');
+    async function load(){
+      try{
+        const items = await api('/api/v1/trace/recent?limit=200');
+        const q = (document.getElementById('tFilter').value||'').toLowerCase();
+        const rows = (Array.isArray(items)? items: []).filter(t=>{
+          const s = `${t.method||''} ${t.path||''} ${t.status||''} ${t.userEmail||''}`.toLowerCase();
+          return s.includes(q);
+        });
+        if(!rows.length){ listEl.innerHTML = '<div class="empty">No traces</div>'; return }
+        const header = `<div class="row" style="grid-template-columns: 120px 1fr 100px 120px 160px 120px"><div class="muted">Trace ID</div><div class="muted">Path</div><div class="muted">Method</div><div class="muted">Status</div><div class="muted">Start</div><div class="muted">Duration</div></div>`;
+        listEl.innerHTML = header + rows.map(t=>{
+          const d = (t.duration||0)/1e6; // ns->ms
+          const started = t.started? new Date(t.started).toLocaleString(): '';
+          const statusPill = `<span class="tag" style="${(t.status>=200&&t.status<400)?'border-color: #16a34a; color:#16a34a':'border-color:#ef4444;color:#ef4444'}">${t.status}</span>`;
+          return `<div class="row" style="grid-template-columns: 120px 1fr 100px 120px 160px 120px"><div class="ellipsis"><a href="#" data-trace="${t.id}">${t.id}</a></div><div class="ellipsis">${t.path||''}</div><div>${t.method||''}</div><div>${statusPill}</div><div>${started}</div><div>${d.toFixed(1)} ms</div></div>`;
+        }).join('');
+        listEl.querySelectorAll('[data-trace]').forEach(a=> a.addEventListener('click', async (e)=>{ e.preventDefault(); showDetail(a.getAttribute('data-trace')); }));
+      }catch(e){ listEl.innerHTML = `<div class="empty">Error: ${String(e)}</div>` }
+    }
+    async function showDetail(id){
+      try{
+        const t = await api(`/api/v1/trace/${encodeURIComponent(id)}`);
+        detEl.style.display='block';
+        const events = (t.events||[]).slice().sort((a,b)=> new Date(a.time)-new Date(b.time));
+        // build a simple waterfall: event name and delta from start
+        const start = t.started? new Date(t.started).getTime(): Date.now();
+        const lines = events.map(ev=>{
+          const ts = new Date(ev.time).toLocaleTimeString();
+          const delta = (new Date(ev.time).getTime() - start)/1.0;
+          const ms = delta.toFixed(1);
+          const f = ev.fields? JSON.stringify(ev.fields): '';
+          const style = ev.name==='error' ? "background:color-mix(in oklab, #ef4444 10%, transparent); border-color: color-mix(in oklab, #ef4444 40%, transparent)" : "";
+          return `<div class="row" style="grid-template-columns: 160px 1fr 120px; ${style}"><div class="muted">${ts}</div><div class="ellipsis"><b>${ev.name}</b> <span class="muted">${f}</span></div><div>${ms} ms</div></div>`;
+        }).join('');
+        detEl.innerHTML = `<h3>Trace ${t.id}</h3><div class="muted">${t.method} ${t.path} • status ${t.status} • user ${t.userEmail||'—'}</div><div style="margin:10px 0">Duration: <b>${((t.duration||0)/1e6).toFixed(1)} ms</b> • Start: ${t.started? new Date(t.started).toLocaleString():''}</div><div>${lines||'<div class="empty">No events</div>'}</div>`;
+      }catch(e){ detEl.innerHTML = `<div class="empty">Error: ${String(e)}</div>` }
+    }
+    document.getElementById('tRefresh').onclick = load;
+    document.getElementById('tFilter').addEventListener('input', ()=> load());
+    let tInt=null; document.getElementById('tAuto').onchange = (e)=>{ if(e.target.checked){ load(); tInt=setInterval(load, 3000);} else { if(tInt) clearInterval(tInt); tInt=null; } };
+    await load();
+  }
+
+  async function renderObservability(root){
+    const providerId = sessionStorage.getItem('currentProvider');
+    const pctl = (arr, p)=>{ if(!arr.length) return 0; const a=[...arr].sort((a,b)=>a-b); const idx=Math.round((p/100)*(a.length-1)); return a[Math.max(0, Math.min(a.length-1, idx))] };
+    async function timeFetch(url, opts){ const t0=performance.now(); const res = await fetch(url, opts||{}); const t1=performance.now(); return {ok: res.ok, ms: t1-t0, status: res.status, body: await (async()=>{ try{ return await res.text() }catch{ return '' } })()}; }
+
+    root.innerHTML = `
+      <div class="toolbar">
+        <h2 style="margin:0">Observability</h2>
+        <span class="grow"></span>
+        <span class="muted-small">Auto-refresh and probes running…</span>
+      </div>
+      <div class="cards" style="grid-template-columns:repeat(2,minmax(320px,1fr))">
+        <div class="card"><h3>Server Metrics</h3><div class="muted">/api/v1/obs/metrics</div><div id="mgrid" class="cards" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:8px"></div><pre id="mtrx" style="margin:0;display:none"></pre><div class="toolbar" style="margin-top:8px"><button class="btn" id="mref">Refresh</button><label class="flex" style="gap:6px"><input type="checkbox" id="mauto"> auto-refresh</label><span class="grow"></span><label class="flex" style="gap:6px"><input type="checkbox" id="showRaw"> show raw</label></div></div>
+        <div class="card"><h3>Status Breakdown</h3><div class="muted">/api/v1/obs/summary</div><div id="statusBar" style="height:16px;border-radius:999px;overflow:hidden;border:1px solid var(--border);display:flex"></div><div class="muted-small" id="statusLegend" style="margin-top:6px"></div><canvas id="statusDonut" width="240" height="140" style="width:100%;height:140px;margin-top:6px"></canvas></div>
+      </div>
+      <div class="cards" style="grid-template-columns:repeat(2,minmax(320px,1fr))">
+        <div class="card"><h3>Request Rate (last ~10 min)</h3><canvas id="rateChart" width="640" height="120" style="width:100%;height:120px"></canvas><div class="muted-small" style="margin-top:6px">Blue: requests per minute • Red: errors per minute</div></div>
+        <div class="card"><h3>Latency (recent)</h3><div class="muted-small" id="latStats">—</div><canvas id="latSpark" width="640" height="80" style="width:100%;height:80px"></canvas></div>
+      </div>
+      <div class="cards" style="grid-template-columns:repeat(2,minmax(320px,1fr))">
+        <div class="card"><h3>Top Slow Endpoints</h3><div id="slowList">Loading…</div></div>
+        <div class="card"><h3>Top Error Endpoints</h3><div id="errAggList">Loading…</div></div>
+      </div>
+      <div class="cards" style="grid-template-columns:repeat(2,minmax(320px,1fr))">
+        <div class="card"><h3>Recent Errors</h3><div class="muted">/api/v1/obs/errors</div><div id="errBox">Loading…</div></div>
+        <div class="card"><h3>S3 Provider Probes (All Providers)</h3><div class="muted">Auto list buckets for each configured provider</div><div id="s3AllBox">Loading…</div></div>
+      </div>
+      <div class="cards" style="grid-template-columns:repeat(2,minmax(320px,1fr))">
+        <div class="card"><h3>API Health</h3><div class="muted">/health</div><div id="healthNow">—</div></div>
+        ${providerId? '<div class="card"><h3>S3 Provider Probe</h3><div class="muted">Auto list buckets for provider '+providerId+'</div><div id="s3Stats" class="muted-small">—</div><canvas id="s3Chart" width="640" height="100" style="width:100%;height:100px;margin-top:6px"></canvas></div>': '<div class="card"><h3>API Version</h3><div class="muted">/api/version</div><pre id="verBox" style="margin:0"></pre></div>'}
+      </div>
+      <div class="cards" style="grid-template-columns:repeat(2,minmax(320px,1fr))">
+        <div class="card"><h3>API Version</h3><div class="muted">/api/version</div><pre id="verBox2" style="margin:0"></pre></div>
+        <div class="card"><h3>Session</h3><div class="muted">/api/v1/auth/me</div><pre id="meBox" style="margin:0"></pre></div>
+      </div>`;
+
+    try{ const h = await fetch('/health').then(r=>r.text()); document.getElementById('healthNow').textContent = h; }catch{ document.getElementById('healthNow').textContent = 'unreachable'; }
+    try{ const v = await fetch('/api/version').then(r=>r.text()); const vb = document.getElementById('verBox') || document.getElementById('verBox2'); if (vb) vb.textContent = v; }catch(e){ const vb = document.getElementById('verBox') || document.getElementById('verBox2'); if (vb) vb.textContent = String(e); }
+    try{ const me = await fetch('/api/v1/auth/me').then(async r=>{ if(!r.ok) throw new Error(await r.text()); return r.json() }); document.getElementById('meBox').textContent = JSON.stringify(me,null,2); }catch(e){ document.getElementById('meBox').textContent = String(e); }
+
+    async function refreshMetrics(){ try{ const m = await fetch('/api/v1/obs/metrics').then(async r=>{ if(!r.ok) throw new Error(await r.text()); return r.json() }); const grid = document.getElementById('mgrid'); const raw = document.getElementById('mtrx'); const showRaw = document.getElementById('showRaw'); if(showRaw && showRaw.checked){ raw.style.display='block'; raw.textContent = JSON.stringify(m,null,2);} else { raw.style.display='none'; } const fmtBytes = (n)=>{ const u=['B','KB','MB','GB','TB']; let i=0, x=Number(n)||0; while(x>=1024&&i<u.length-1){ x/=1024; i++; } return x.toFixed(x<10&&i>0?1:0)+' '+u[i]; }; const big = (label, value, hint)=>`<div class='card' style='padding:12px'><div class='muted' style='font-size:12px'>${label}</div><div style='font-size:22px;font-weight:700'>${value}</div>${hint?`<div class='muted' style='font-size:12px'>${hint}</div>`:''}</div>`; grid.innerHTML = big('Uptime', (m.uptimeHuman||((m.uptimeSec||0).toFixed? (m.uptimeSec).toFixed(0)+'s': m.uptimeSec)), m.startedAt? new Date(m.startedAt).toLocaleString(): '') + big('Requests', m.totalRequests||0) + big('4xx', m.total4xx||0) + big('5xx', m.total5xx||0) + big('Bytes In', fmtBytes(m.bytesIn||0)) + big('Bytes Out', fmtBytes(m.bytesOut||0)) + big('Avg Duration', (m.avgDurationMs? m.avgDurationMs.toFixed? m.avgDurationMs.toFixed(1): m.avgDurationMs : 0)+' ms') + big('Goroutines', m.goroutines||0) + big('Heap Alloc', fmtBytes(m.heapAlloc||0)) + big('Heap Sys', fmtBytes(m.heapSys||0)) + big('GC Count', m.gcNum||0); }catch(e){ const raw = document.getElementById('mtrx'); raw.style.display='block'; raw.textContent = String(e) } }
+    document.getElementById('mref').onclick = refreshMetrics;
+    let autoInt = null; const auto = document.getElementById('mauto');
+    // default to auto on
+    if (auto) { auto.checked = true; }
+    auto.onchange = ()=>{ if(auto.checked){ refreshMetrics(); autoInt = setInterval(refreshMetrics, 5000);} else { if(autoInt) clearInterval(autoInt); autoInt=null; } };
+    if (auto && auto.checked) { auto.onchange(); }
+    document.getElementById('showRaw').onchange = ()=> refreshMetrics();
+
+    // ------- Summary visuals -------
+    function renderStatus(counts){ const total = (counts['2xx']||0)+(counts['3xx']||0)+(counts['4xx']||0)+(counts['5xx']||0) || 1; const bar = document.getElementById('statusBar'); bar.innerHTML=''; const seg = (w, color)=>{ const d=document.createElement('div'); d.style.width=(w*100/total)+'%'; d.style.background=color; return d }; bar.appendChild(seg(counts['2xx']||0, '#16a34a')); bar.appendChild(seg(counts['3xx']||0, '#06b6d4')); bar.appendChild(seg(counts['4xx']||0, '#f59e0b')); bar.appendChild(seg(counts['5xx']||0, '#ef4444')); const leg = document.getElementById('statusLegend'); const pct = v=> Math.round((v/total)*100); leg.textContent = `2xx ${(counts['2xx']||0)} (${pct(counts['2xx']||0)}%) • 3xx ${(counts['3xx']||0)} (${pct(counts['3xx']||0)}%) • 4xx ${(counts['4xx']||0)} (${pct(counts['4xx']||0)}%) • 5xx ${(counts['5xx']||0)} (${pct(counts['5xx']||0)}%)`; }
+    function fitCanvas(canvas){ const dpr=window.devicePixelRatio||1; const w=canvas.clientWidth||canvas.width; const h=canvas.clientHeight||canvas.height; canvas.width=Math.max(1,Math.floor(w*dpr)); canvas.height=Math.max(1,Math.floor(h*dpr)); const ctx=canvas.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); return {ctx,w:canvas.width/dpr,h:canvas.height/dpr}; }
+    function drawSparkline(canvas, vals, color){
+      const {ctx,w,h}=fitCanvas(canvas);
+      ctx.clearRect(0,0,w,h);
+      if(!vals||!vals.length){ return }
+      const n=vals.length; const max=Math.max(...vals); const min=Math.min(...vals);
+      const pad=6;
+      ctx.strokeStyle='rgba(127,127,127,.2)'; ctx.lineWidth=1; ctx.beginPath();
+      for(let i=0;i<=4;i++){ const y=pad+(h-2*pad)*(i/4); ctx.moveTo(pad,y); ctx.lineTo(w-pad,y);} ctx.stroke();
+      ctx.strokeStyle=color||getComputedStyle(document.body).getPropertyValue('--primary')||'#6366f1'; ctx.lineWidth=2;
+      ctx.beginPath();
+      for(let i=0;i<n;i++){ const x=pad+(w-2*pad)*(i/(n-1)); const v=vals[i]; const y = h-pad - (h-2*pad)*((v-min)/Math.max(1e-6,(max-min))); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
+      ctx.stroke();
+    }
+    function drawBars(canvas, points){
+      const {ctx,w,h}=fitCanvas(canvas);
+      ctx.clearRect(0,0,w,h);
+      if(!points||!points.length) return;
+      const max = Math.max(...points.map(p=>p.count));
+      const pad=10;
+      const bw = Math.max(6, Math.floor((w-2*pad)/points.length)-6);
+      let x=pad;
+      points.forEach(p=>{
+        const H = max? Math.round((p.count/max)*(h-2*pad)) : 0;
+        ctx.fillStyle = '#6366f1';
+        ctx.fillRect(x, h-pad-H, bw, H);
+        if (p.errors>0){
+          const He = max? Math.round((p.errors/max)*(h-2*pad)) : 0;
+          ctx.fillStyle = '#ef4444';
+          ctx.fillRect(x, h-pad-He, bw, He);
+        }
+        x += bw+6;
+      });
+    }
+    function drawDonut(canvas, counts){
+      if(!canvas) return;
+      const {ctx,w,h}=fitCanvas(canvas);
+      ctx.clearRect(0,0,w,h);
+      const vals=[(counts['2xx']||0),(counts['3xx']||0),(counts['4xx']||0),(counts['5xx']||0)];
+      const colors=['#16a34a','#06b6d4','#f59e0b','#ef4444'];
+      const total = Math.max(1, vals.reduce((a,b)=>a+b,0));
+      let ang=-Math.PI/2; const cx=w/2, cy=h/2, r=Math.min(w,h)/2 - 10;
+      for(let i=0;i<vals.length;i++){
+        const frac = vals[i]/total; const a2 = ang + frac*2*Math.PI;
+        ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,ang,a2); ctx.closePath();
+        ctx.fillStyle = colors[i]; ctx.fill(); ang = a2;
+      }
+      // inner cut
+      ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--card') || '#fff';
+      ctx.beginPath(); ctx.arc(cx,cy,r*0.6,0,2*Math.PI); ctx.fill();
+      // center label
+      const ok = vals[0]; const pct = Math.round(ok*100/total);
+      ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text') || '#111';
+      ctx.font = '600 16px Inter, system-ui, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(pct+'% 2xx', cx, cy);
+    }
+    async function refreshSummary(){ try{ const s = await fetch('/api/v1/obs/summary').then(async r=>{ if(!r.ok) throw new Error(await r.text()); return r.json() }); renderStatus(s.statusCounts||{}); const donut = document.getElementById('statusDonut'); if(donut) drawDonut(donut, s.statusCounts||{}); const lat = Array.isArray(s.recentLatencies)? s.recentLatencies: []; const cLat = document.getElementById('latSpark'); drawSparkline(cLat, lat, '#22c55e'); const l50 = pctl(lat,50).toFixed(1), l95 = pctl(lat,95).toFixed(1), l99 = pctl(lat,99).toFixed(1); document.getElementById('latStats').textContent = `p50 ${l50} ms • p95 ${l95} ms • p99 ${l99} ms`; const rate = Array.isArray(s.perMinute)? s.perMinute: []; const cRate = document.getElementById('rateChart'); drawBars(cRate, rate); const slow = Array.isArray(s.topSlow)? s.topSlow: []; document.getElementById('slowList').innerHTML = slow.length? slow.map(x=>`<div class='row' style='grid-template-columns:1fr 100px 100px'><div class='ellipsis'>${x.path}</div><div>${(x.avgMs||0).toFixed(1)} ms avg</div><div>${(x.p95Ms||0).toFixed(1)} ms p95</div></div>`).join('') : '<div class="empty">No slow endpoints</div>'; const errs = Array.isArray(s.topErrors)? s.topErrors: []; document.getElementById('errAggList').innerHTML = errs.length? errs.map(e=>`<div class='row' style='grid-template-columns:1fr 80px 1fr 120px'><div class='ellipsis'>${e.path}</div><div><span class='tag' style='border-color:#ef4444;color:#ef4444'>${e.count}</span></div><div class='muted-small ellipsis' title='${(e.lastMessage||'').toString()}'>${(e.lastMessage||'').toString()}</div><div>${e.sampleTraceId? `<a href='#' data-open-trace='${e.sampleTraceId}'>View trace</a>`:''}</div></div>`).join('') : '<div class="empty">No errors</div>'; document.querySelectorAll('[data-open-trace]').forEach(a=> a.addEventListener('click', (ev)=>{ ev.preventDefault(); location.hash = '#/tracing'; setTimeout(()=>{ const id=a.getAttribute('data-open-trace'); const link = document.querySelector(`[data-trace="${id}"]`); if(link) link.click(); }, 200); })); }catch(e){ /* ignore */ } }
+    // tie summary refresh to metrics auto-refresh as well
+    let sumInt=null; const autoM = document.getElementById('mauto'); const hookAuto=()=>{ if(autoM && autoM.checked){ refreshSummary(); sumInt = setInterval(refreshSummary, 5000);} else { if(sumInt) clearInterval(sumInt); sumInt=null; } }; if (autoM){ autoM.addEventListener('change', hookAuto); }
+    refreshSummary();
+    // Redraw charts proportionally on resize
+    window.addEventListener('resize', ()=>{ try{ refreshMetrics(); }catch{} try{ refreshSummary(); }catch{} });
+
+    // Recent errors
+    async function refreshErrors(){ try{ const errs = await fetch('/api/v1/obs/errors').then(async r=>{ if(!r.ok) throw new Error(await r.text()); return r.json() }); const box = document.getElementById('errBox'); if(!Array.isArray(errs) || !errs.length){ box.innerHTML = '<div class="empty">No recent errors</div>'; return } box.innerHTML = errs.slice(0,10).map(e=>{ const d = e.durationMs? e.durationMs.toFixed? e.durationMs.toFixed(1): e.durationMs : 0; const started = e.started? new Date(e.started).toLocaleString():''; const pill = `<span class='tag' style='border-color:#ef4444;color:#ef4444'>${e.status}</span>`; return `<div class='row' style='grid-template-columns: 100px 1fr 120px 160px'><div>${pill}</div><div class='ellipsis'><a href='#' data-open-trace='${e.id}'>${e.method||''} ${e.path||''}</a><div class='muted-small'>${(e.message||'').toString().slice(0,120)}</div></div><div>${d} ms</div><div>${started}</div></div>`; }).join(''); box.querySelectorAll('[data-open-trace]').forEach(a=> a.addEventListener('click', (ev)=>{ ev.preventDefault(); location.hash = '#/tracing'; setTimeout(()=>{ const id=a.getAttribute('data-open-trace'); const link = document.querySelector(`[data-trace="${id}"]`); if(link) link.click(); }, 200); })); }catch(e){ document.getElementById('errBox').innerHTML = `<div class='empty'>Error: ${String(e)}</div>` } }
+    refreshErrors();
+
+    // ---- Automated client latency pings & S3 probes ----
+    // Clear previous intervals if any
+    if (!window.__obsIntervals) window.__obsIntervals = [];
+    window.__obsIntervals.forEach(id=> clearInterval(id));
+    window.__obsIntervals = [];
+
+    // Rolling arrays helpers
+    const pushSample = (arr, v, max=120)=>{ arr.push(v); if(arr.length>max) arr.shift(); };
+
+    // Client API latency sparkline (pings /health every 5s)
+    const latArr = [];
+    async function pingHealth(){
+      try{ const r = await timeFetch('/health'); pushSample(latArr, r.ms); }catch{ pushSample(latArr, 0) }
+      const p50 = pctl(latArr,50).toFixed(0);
+      const p95 = pctl(latArr,95).toFixed(0);
+      const p99 = pctl(latArr,99).toFixed(0);
+      const last = latArr.length? latArr[latArr.length-1].toFixed(0): '0';
+      const ls = document.getElementById('latStats'); if(ls) ls.innerHTML = `last <b>${last} ms</b> • p50 <b>${p50} ms</b> • p95 <b>${p95} ms</b> • p99 <b>${p99} ms</b>`;
+      const canvas = document.getElementById('latSpark'); if(canvas) drawSparkline(canvas, latArr, '#22c55e');
+    }
+    await pingHealth();
+    window.__obsIntervals.push(setInterval(pingHealth, 5000));
+
+    // S3 Provider probe (list buckets) every 10s when provider is selected (single provider quick view)
+    if (providerId){
+      const s3Arr = []; const s3OkArr = [];
+      async function probeS3(){
+        const t0 = performance.now();
+        let status = 0; let ok=false;
+        try{
+          const res = await fetch(`/api/v1/providers/${providerId}/buckets?t=${Date.now()}`);
+          status = res.status; ok = res.ok;
+        }catch{}
+        const ms = performance.now()-t0; pushSample(s3Arr, ms); pushSample(s3OkArr, ok?1:0);
+        const okPct = s3OkArr.length? Math.round(100*(s3OkArr.reduce((a,b)=>a+b,0)/s3OkArr.length)) : 0;
+        const ss = document.getElementById('s3Stats'); if (ss) ss.innerHTML = `last <b>${Math.round(ms)} ms</b> • status ${status||'—'} • success ${okPct}%`;
+        const sc = document.getElementById('s3Chart'); if (sc) drawSparkline(sc, s3Arr, '#6366f1');
+      }
+      await probeS3();
+      window.__obsIntervals.push(setInterval(probeS3, 10000));
+    }
+
+    // S3 Provider Probes (All Providers) — probe every 15s and render per‑provider mini charts
+    (async function(){
+      let providers = [];
+      try{ providers = await api('/api/v1/providers'); }catch{}
+      if (!Array.isArray(providers)) providers = providers ? [providers] : [];
+      const box = document.getElementById('s3AllBox');
+      if (!box) return;
+      if (!providers.length){ box.innerHTML = '<div class="empty">No providers configured</div>'; return }
+      // Build per‑provider cards
+      const cards = providers.map(p=>{
+        const id = `s3p_${p.id}`; const cid = `s3c_${p.id}`;
+        return `<div class='card' style='padding:12px;margin-bottom:10px'>
+          <div style='display:flex;justify-content:space-between;align-items:center;gap:10px'>
+            <div><b>${p.name||('Provider '+p.id)}</b> <span class='tag'>${p.type||''}</span><div class='muted-small'>${p.endpoint||''}</div></div>
+            <div class='muted-small' id='${id}'>—</div>
+          </div>
+          <canvas id='${cid}' width='640' height='80' style='width:100%;height:80px;margin-top:6px'></canvas>
+        </div>`;
+      }).join('');
+      box.innerHTML = cards;
+      // Start probes
+      const state = {};
+      for (const p of providers){ state[p.id] = {arr: [], ok: []}; }
+      async function probeOne(p){
+        const st = state[p.id]; const t0 = performance.now(); let status=0; let ok=false;
+        try{ const res = await fetch(`/api/v1/providers/${p.id}/buckets?t=${Date.now()}`); status = res.status; ok = res.ok; }catch{}
+        const ms = performance.now()-t0; pushSample(st.arr, ms); pushSample(st.ok, ok?1:0);
+        const okPct = st.ok.length? Math.round(100*(st.ok.reduce((a,b)=>a+b,0)/st.ok.length)) : 0;
+        const label = document.getElementById(`s3p_${p.id}`); if (label) label.innerHTML = `last <b>${Math.round(ms)} ms</b> • status ${status||'—'} • success ${okPct}%`;
+        const canvas = document.getElementById(`s3c_${p.id}`); if (canvas) drawSparkline(canvas, st.arr, '#6366f1');
+      }
+      // initial probes staggered to avoid burst
+      for (let i=0;i<providers.length;i++){ const p = providers[i]; setTimeout(()=>{ probeOne(p) }, i*200); }
+      // periodic probes
+      const intId = setInterval(async ()=>{
+        for (let i=0;i<providers.length;i++){ const p = providers[i]; setTimeout(()=>{ probeOne(p) }, i*200); }
+      }, 15000);
+      window.__obsIntervals.push(intId);
+    })();
+  }
+
+  async function renderLogging(root){
+    root.innerHTML = `
+      <div class="toolbar">
+        <h2 style="margin:0">Logging</h2>
+        <span class="grow"></span>
+        <select id="logLevel" class="input">
+          <option value="">level: all</option>
+          <option value="debug">debug</option>
+          <option value="info">info</option>
+          <option value="error">error</option>
+        </select>
+        <input id="logSearch" class="input" placeholder="Search message or fields" style="min-width:260px" />
+        <button class="btn" id="logDownload">Download</button>
+        <button class="btn" id="logRefresh">Refresh</button>
+        <label class="flex" style="gap:6px"><input type="checkbox" id="logAuto"> auto-refresh</label>
+        <label class="flex" style="gap:6px"><input type="checkbox" id="logTail"> live tail</label>
+      </div>
+      <div class="card" id="logList">Loading…</div>
+    `;
+    const listEl = document.getElementById('logList');
+    function pill(level){
+      const color = level==='error'? '#ef4444' : level==='debug'? '#10b981' : level==='info'? '#3b82f6' : '#6b7280';
+      return `<span class="tag" style="border-color:${color};color:${color}">${level}</span>`;
+    }
+    function row(e){
+      const t = e.time? new Date(e.time).toLocaleString() : '';
+      const lvl = pill(e.level||'');
+      let fields = '';
+      if (e.fields){
+        const keys = Object.keys(e.fields);
+        fields = keys.slice(0,6).map(k=> `<span class="tag" title="${k}">${k}: ${String(e.fields[k]).slice(0,40)}</span>`).join(' ');
+      }
+      const trace = e.fields && e.fields.traceId ? `<a href="#" data-open-trace="${e.fields.traceId}">trace ${e.fields.traceId}</a>` : '';
+      return `<div class="row" style="grid-template-columns: 180px 100px 1fr 240px">
+        <div class="muted">${t}</div>
+        <div>${lvl}</div>
+        <div class="ellipsis"><b>${e.msg||''}</b><div class="muted-small" style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap">${fields}</div></div>
+        <div class="muted-small" style="text-align:right">${trace}</div>
+      </div>`;
+    }
+    let itemsCache = [];
+    function renderList(items){
+      const q = (document.getElementById('logSearch').value||'').toLowerCase();
+      const level = document.getElementById('logLevel').value;
+      const filtered = items.filter(e=>{
+        const okLevel = !level || (String(e.level||'').toLowerCase()===level);
+        if (!okLevel) return false;
+        if (!q) return true;
+        const base = `${e.msg||''} ${JSON.stringify(e.fields||{})}`.toLowerCase();
+        return base.includes(q);
+      });
+      if (!filtered.length){ listEl.innerHTML = '<div class="empty">No logs</div>'; return }
+      const header = `<div class="row" style="grid-template-columns: 180px 100px 1fr 240px"><div class="muted">Time</div><div class="muted">Level</div><div class="muted">Message</div><div class="muted">Links</div></div>`;
+      listEl.innerHTML = header + filtered.map(row).join('');
+      listEl.querySelectorAll('[data-open-trace]').forEach(a=> a.addEventListener('click', (ev)=>{ ev.preventDefault(); location.hash = '#/tracing'; setTimeout(()=>{ const id=a.getAttribute('data-open-trace'); const link = document.querySelector(`[data-trace="${id}"]`); if(link) link.click(); }, 200); }));
+    }
+    async function load(){
+      try{
+        let items = await api('/api/v1/logs/recent?limit=300');
+        if (!Array.isArray(items)) items = items ? [items] : [];
+        itemsCache = items;
+        renderList(itemsCache);
+      }catch(e){ listEl.innerHTML = `<div class="empty">Error: ${String(e)}</div>` }
+    }
+    document.getElementById('logRefresh').onclick = load;
+    document.getElementById('logSearch').addEventListener('input', ()=> renderList(itemsCache));
+    document.getElementById('logLevel').addEventListener('change', ()=> { renderList(itemsCache); restartTail(); });
+    document.getElementById('logDownload').onclick = ()=>{
+      const lvl = document.getElementById('logLevel').value; const q = lvl? `?limit=1000&level=${encodeURIComponent(lvl)}`: '?limit=1000'; window.open('/api/v1/logs/download'+q, '_blank');
+    };
+    let lInt=null; const lAuto = document.getElementById('logAuto');
+    if (lAuto) { lAuto.checked = true; }
+    lAuto.onchange = ()=>{ if(lAuto.checked){ load(); lInt = setInterval(load, 3000)} else { if(lInt) clearInterval(lInt); lInt=null; } };
+    if (lAuto && lAuto.checked) lAuto.onchange();
+
+    // Live tail via SSE
+    let es = null; const lTail = document.getElementById('logTail');
+    function restartTail(){ if (es){ es.close(); es=null; } if (lTail && lTail.checked){ startTail(); } }
+    function startTail(){
+      // turn off auto refresh when tailing
+      if (lAuto) { lAuto.checked=false; lAuto.onchange(); }
+      const lvl = document.getElementById('logLevel').value; const url = '/api/v1/logs/stream'+(lvl? `?level=${encodeURIComponent(lvl)}`:'');
+      try{ es = new EventSource(url); }catch{ return }
+      es.onmessage = (ev)=>{ try{ const e = JSON.parse(ev.data); itemsCache.unshift(e); if (itemsCache.length>500) itemsCache.pop(); renderList(itemsCache); }catch{} };
+      es.onerror = ()=>{ /* auto-retry handled by EventSource */ };
+    }
+    if (lTail){ lTail.onchange = ()=>{ if(lTail.checked){ startTail(); } else { if(es) es.close(); es=null; } }; }
+
+    await load();
+  }
+</script>
+</body>
+</html>
