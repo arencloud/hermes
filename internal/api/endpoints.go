@@ -12,7 +12,6 @@ import (
 	"github.com/arencloud/hermes/internal/db"
 	"github.com/arencloud/hermes/internal/logging"
 	"github.com/arencloud/hermes/internal/models"
-	"github.com/arencloud/hermes/internal/version"
 
 	"github.com/go-chi/chi/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -384,10 +383,10 @@ func obsSummary(w http.ResponseWriter, r *http.Request) {
 func openapiHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	// Minimal OpenAPI 3.0 spec describing the primary Hermes API endpoints
-		spec := map[string]any{
-			"openapi": "3.0.3",
-			"info":    map[string]any{"title": "Hermes API", "version": version.Version, "description": "S3-compatible storage manager API (Providers, Buckets, Objects, Users, Auth, Observability, Tracing, Logging)"},
-			"servers": []any{map[string]any{"url": "/api/v1"}},
+	spec := map[string]any{
+		"openapi": "3.0.3",
+		"info":    map[string]any{"title": "Hermes API", "version": "0.1.0", "description": "S3-compatible storage manager API (Providers, Buckets, Objects, Users, Auth, Observability, Tracing, Logging)"},
+		"servers": []any{map[string]any{"url": "/api/v1"}},
 		"paths": map[string]any{
 			"/auth/login": map[string]any{"post": map[string]any{"summary": "Login", "requestBody": map[string]any{"required": true, "content": map[string]any{"application/json": map[string]any{"schema": map[string]any{"type": "object", "properties": map[string]any{"email": map[string]any{"type": "string"}, "password": map[string]any{"type": "string"}}, "required": []any{"email", "password"}}}}}, "responses": map[string]any{"200": map[string]any{"description": "OK"}}}},
 			"/auth/me":    map[string]any{"get": map[string]any{"summary": "Current user", "responses": map[string]any{"200": map[string]any{"description": "OK"}}}},

@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -10,7 +9,6 @@ import (
 
 	"github.com/arencloud/hermes/internal/config"
 	"github.com/arencloud/hermes/internal/logging"
-	"github.com/arencloud/hermes/internal/version"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
 )
@@ -110,11 +108,7 @@ func Router(cfg *config.Config, logger logging.Logger) http.Handler {
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/version", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			// include commit and buildDate if available
-			resp := map[string]any{"name": "hermes", "version": version.Version}
-			if version.Commit != "" { resp["commit"] = version.Commit }
-			if version.BuildDate != "" { resp["buildDate"] = version.BuildDate }
-			json.NewEncoder(w).Encode(resp)
+			w.Write([]byte(`{"name":"hermes","version":"0.1.0"}`))
 		})
 		r.Route("/v1", func(r chi.Router) {
 			registerAPI(r, logger)

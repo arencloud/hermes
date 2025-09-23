@@ -84,14 +84,9 @@ dev-status:
 # -------- App build/run/test (local) --------
 .PHONY: build test run clean
 
-# Build metadata from git (fallbacks)
-VERSION ?= $(shell git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo dev)
-COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
-BUILD_DATE ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
-
 build:
-	@echo "Building Hermes… (version=$(VERSION) commit=$(COMMIT))"
-	GOFLAGS= go build -ldflags "-s -w -X github.com/arencloud/hermes/internal/version.Version=$(VERSION) -X github.com/arencloud/hermes/internal/version.Commit=$(COMMIT) -X github.com/arencloud/hermes/internal/version.BuildDate=$(BUILD_DATE)" -o server ./cmd/server
+	@echo "Building Hermes…"
+	GOFLAGS= go build -o server ./cmd/server
 
 run: build
 	APP_ENV=$(APP_ENV) HTTP_PORT=$(HTTP_PORT) \
@@ -100,7 +95,7 @@ run: build
 	./server
 
 test:
-	go test ./internal/... ./cmd/...
+	go test ./...
 
 clean:
 	rm -f server

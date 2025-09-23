@@ -82,7 +82,7 @@ podSecurityContext:
 
 containerSecurityContext:
   allowPrivilegeEscalation: false
-  readOnlyRootFilesystem: false
+  readOnlyRootFilesystem: true
   # runAsUser: 1001   # avoid pinning on OpenShift; comment out by default
 
 # Ingress (Kubernetes/OKD). For OpenShift, you can prefer Route below.
