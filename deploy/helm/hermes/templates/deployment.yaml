@@ -42,6 +42,10 @@ spec:
             - name: BASE_PATH
               value: {{ .Values.http.basePath | quote }}
             {{- end }}
+            {{- if gt (int64 .Values.upload.maxBodyBytes) 0 }}
+            - name: MAX_UPLOAD_SIZE_BYTES
+              value: {{ .Values.upload.maxBodyBytes | quote }}
+            {{- end }}
             {{- range $k, $v := .Values.extraEnv }}
             - name: {{ $k }}
               value: {{ $v | quote }}

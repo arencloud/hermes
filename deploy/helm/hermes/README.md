@@ -93,13 +93,32 @@ db:
   sqlitePath: /data/hermes.db
   dsn: ""
 
+upload:
+  # Max upload size enforced by the app (0 = unlimited)
+  maxBodyBytes: 0
+
 ingress:
   enabled: false
+  annotations: {}
+  # For NGINX ingress controller you may need:
+  #   nginx.ingress.kubernetes.io/proxy-body-size: "0"     # unlimited
+  #   nginx.ingress.kubernetes.io/proxy-request-buffering: "off"  # stream uploads
 
 openshift:
   route:
     enabled: false
+    annotations: {}
+    # The default OpenShift HAProxy router does not have a per-route body size limit.
+    # If you use a third-party ingress controller on OpenShift (e.g., NGINX), configure its annotations above.
 ```
+
+## Large file uploads (Kubernetes/OKD/OpenShift)
+- At the cluster edge, ensure your ingress/controller allows large bodies and streaming:
+  - NGINX Ingress: set `ingress.annotations`:
+    - `nginx.ingress.kubernetes.io/proxy-body-size: "0"` (or a concrete size like `200m`)
+    - `nginx.ingress.kubernetes.io/proxy-request-buffering: "off"`
+- In the app, you can cap uploads with `upload.maxBodyBytes` (maps to env `MAX_UPLOAD_SIZE_BYTES`).
+- Hermes streams multipart file parts directly to S3 (no full in-memory buffering).
 
 ## Uninstall
 ```bash

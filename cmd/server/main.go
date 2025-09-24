@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/arencloud/hermes/internal/api"
 	"github.com/arencloud/hermes/internal/config"
@@ -22,7 +23,14 @@ func main() {
 
 	r := api.Router(cfg, logger)
 
-	srv := &http.Server{Addr: ":" + cfg.HttpPort, Handler: middleware.Recoverer(r, logger)}
+	srv := &http.Server{
+		Addr:              ":" + cfg.HttpPort,
+		Handler:           middleware.Recoverer(r, logger),
+		ReadHeaderTimeout: 15 * time.Second,
+		ReadTimeout:       0, // allow long-running uploads/downloads; rely on LB timeouts
+		WriteTimeout:      0,
+		MaxHeaderBytes:    1 << 20, // 1MB headers
+	}
 	logger.Info("server starting", "addr", srv.Addr)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Println("server error:", err)

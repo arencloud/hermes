@@ -9,9 +9,12 @@ import (
 
 	"github.com/arencloud/hermes/internal/config"
 	"github.com/arencloud/hermes/internal/logging"
+	"github.com/arencloud/hermes/internal/version"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
 )
+
+var maxUploadSizeBytes int64
 
 // Note: no go:embed for assets; we serve from disk only.
 
@@ -32,6 +35,7 @@ func (sr *statusRecorder) Write(b []byte) (int, error) {
 }
 
 func Router(cfg *config.Config, logger logging.Logger) http.Handler {
+	maxUploadSizeBytes = cfg.MaxUploadSizeBytes
 	r := chi.NewRouter()
 	r.Use(cors.Handler(cors.Options{AllowedOrigins: []string{"*"}, AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}, AllowedHeaders: []string{"*"}}))
 	// simple global request counter (observability)
@@ -108,7 +112,7 @@ func Router(cfg *config.Config, logger logging.Logger) http.Handler {
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/version", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{"name":"hermes","version":"0.1.0"}`))
+			w.Write([]byte(`{"name":"hermes","version":"` + version.Version + `"}`))
 		})
 		r.Route("/v1", func(r chi.Router) {
 			registerAPI(r, logger)

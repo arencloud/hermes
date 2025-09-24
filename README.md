@@ -138,6 +138,7 @@ Hermes is configured via environment variables (see internal/config/config.go):
 - DB_PATH: path to SQLite DB when DB_DRIVER=sqlite (default: data/hermes.db)
 - DATABASE_URL / DB_DSN: Postgres DSN when DB_DRIVER=postgres (e.g. postgres://user:pass@host:5432/db?sslmode=disable)
 - STATIC_DIR: static assets directory (default: web/dist; in container: /app/web/dist)
+- MAX_UPLOAD_SIZE_BYTES: per-request upload cap; 0 = unlimited (default: 0). Enforced for multipart uploads to prevent OOM.
 
 Selected runtime toggles from Helm values (deploy/helm/hermes/values.yaml):
 - service.port: Service port (default 8080)
@@ -167,7 +168,7 @@ On first run, Hermes auto-migrates the schema and bootstraps:
 
 Base paths:
 - Health: GET /health → "ok"
-- Version: GET /api/version → { name: "hermes", version: "0.1.0" }
+- Version: GET /api/version → { name: "hermes", version: "<version>" }
 - Main API: /api/v1 (requires authentication for most endpoints)
 
 Auth & Users:
@@ -255,6 +256,11 @@ Runtime defaults in the image:
 - DB_PATH=/data/hermes.db (mount /data)
 - Static assets and the logo are baked into the image at /app/web/dist and /app/img/logo
 
+Versioning and Web UI:
+- The server exposes GET /api/version returning the application version.
+- The Web UI reads /api/version and displays it in the Observability section, ensuring the UI shows the same version as the running image.
+- The version is injected at build time via Go ldflags and Docker ARG VERSION. Release builds pass the tag (e.g., v0.1.3), so /api/version matches the image tag.
+
 ## Helm chart ⛵
 
 See deploy/helm/hermes for full chart. Key values in values.yaml:
@@ -273,6 +279,7 @@ Notes are printed after install/upgrade via templates/NOTES.txt.
 - Static UI not loading: Confirm STATIC_DIR path and that web/dist exists. In container, it’s baked into /app/web/dist.
 - Postgres connection errors: Verify DATABASE_URL (or DB_DSN) and network reachability; set db.driver=postgres in Helm.
 - MinIO provider errors: Ensure MinIO is healthy (make wait-minio), correct endpoint/credentials, and useSSL flag.
+- Uploading large files on Kubernetes/OKD/OpenShift causes 413/crash: set NGINX ingress annotations `nginx.ingress.kubernetes.io/proxy-body-size: "0"` and `nginx.ingress.kubernetes.io/proxy-request-buffering: "off"`; for OpenShift Route, there’s no per-route body size limit by default, but ensure any third-party ingress in front allows large bodies. Optionally cap in-app via `MAX_UPLOAD_SIZE_BYTES` or Helm `upload.maxBodyBytes`.
 
 ## Contributing 🤝
 

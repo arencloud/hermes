@@ -5,6 +5,10 @@ metadata:
   name: {{ include "hermes.fullname" . }}
   labels:
     {{- include "hermes.labels" . | nindent 4 }}
+  {{- with .Values.openshift.route.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   to:
     kind: Service

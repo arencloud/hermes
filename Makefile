@@ -84,9 +84,13 @@ dev-status:
 # -------- App build/run/test (local) --------
 .PHONY: build test run clean
 
+# Version from git tag or env (fallback to dev)
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+LDFLAGS := -s -w -X github.com/arencloud/hermes/internal/version.Version=$(VERSION)
+
 build:
-	@echo "Building Hermes…"
-	GOFLAGS= go build -o server ./cmd/server
+	@echo "Building Hermes (version $(VERSION))…"
+	GOFLAGS= go build -ldflags '$(LDFLAGS)' -o server ./cmd/server
 
 run: build
 	APP_ENV=$(APP_ENV) HTTP_PORT=$(HTTP_PORT) \

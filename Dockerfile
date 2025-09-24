@@ -14,13 +14,13 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 COPY . .
 
 # Build-time metadata (passed from workflow)
-ARG VERSION
+ARG VERSION=dev
 ARG VCS_REF
 ARG BUILD_DATE
 
 # Build the server binary. CGO is required for sqlite (go-sqlite3)
 RUN --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=1 GOOS=linux go build -trimpath -ldflags "-s -w" -o /out/server ./cmd/server
+    CGO_ENABLED=1 GOOS=linux go build -trimpath -ldflags "-s -w -X github.com/arencloud/hermes/internal/version.Version=${VERSION}" -o /out/server ./cmd/server
 
 # -------- Runtime stage --------
 FROM alpine:3.20
@@ -35,7 +35,7 @@ COPY web/dist /app/web/dist
 COPY img/logo /app/img/logo
 
 # Build-time metadata again for labels
-ARG VERSION
+ARG VERSION=dev
 ARG VCS_REF
 ARG BUILD_DATE
 

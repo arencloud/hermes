@@ -15,6 +15,17 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// countingWriter is a tiny io.Writer that invokes a callback with the number of bytes written.
+// It allows us to use io.TeeReader to count bytes as they stream without extra buffers/goroutines.
+type countingWriter struct{ on func(int) }
+
+func (w countingWriter) Write(p []byte) (int, error) {
+	if w.on != nil {
+		w.on(len(p))
+	}
+	return len(p), nil
+}
+
 func registerBuckets(r chi.Router) {
 	r.Get("/providers/{id}/buckets/db", listBucketsFromDB)
 	r.Get("/providers/{id}/buckets", listBuckets)
@@ -259,8 +270,18 @@ func uploadObject(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, 404, "provider not found")
 		return
 	}
+	// Enforce configurable maximum upload size to avoid memory pressure/DoS
+	if maxUploadSizeBytes > 0 {
+		r.Body = http.MaxBytesReader(w, r.Body, maxUploadSizeBytes)
+	}
 	mr, err := r.MultipartReader()
 	if err != nil {
+		// Handle too large error specifically
+		msg := err.Error()
+		if strings.Contains(strings.ToLower(msg), "request body too large") || strings.Contains(strings.ToLower(msg), "http: request body too large") {
+			respondError(w, r, 413, "payload too large")
+			return
+		}
 		respondError(w, r, 400, "expecting multipart form-data")
 		return
 	}
@@ -416,30 +437,10 @@ func copyObject(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	// Wrap reader to count bytes
-	pr, pw := io.Pipe()
-	go func() {
-		buf := make([]byte, 1024*64)
-		for {
-			n, er := rc.Read(buf)
-			if n > 0 {
-				transferred += int64(n)
-				if _, ew := pw.Write(buf[:n]); ew != nil {
-					pw.CloseWithError(ew)
-					return
-				}
-			}
-			if er != nil {
-				pw.CloseWithError(er)
-				return
-			}
-		}
-	}()
+	// Wrap reader to count bytes without additional buffering/goroutines
+	tee := io.TeeReader(rc, countingWriter{on: func(n int){ transferred += int64(n) }})
 	ct := "application/octet-stream"
-	if total > 0 {
-		_, _ = total, ct
-	}
-	if _, err := dstClient.Upload(r.Context(), in.DstBucket, in.DstKey, pr, -1, ct); err != nil {
+	if _, err := dstClient.Upload(r.Context(), in.DstBucket, in.DstKey, tee, -1, ct); err != nil {
 		write(map[string]any{"error": err.Error()})
 		close(doneCh)
 		return
@@ -537,27 +538,10 @@ func moveObject(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	// Wrap reader to count bytes
-	pr, pw := io.Pipe()
-	go func() {
-		buf := make([]byte, 1024*64)
-		for {
-			n, er := rc.Read(buf)
-			if n > 0 {
-				transferred += int64(n)
-				if _, ew := pw.Write(buf[:n]); ew != nil {
-					pw.CloseWithError(ew)
-					return
-				}
-			}
-			if er != nil {
-				pw.CloseWithError(er)
-				return
-			}
-		}
-	}()
+	// Wrap reader to count bytes without additional buffering/goroutines
+	tee := io.TeeReader(rc, countingWriter{on: func(n int){ transferred += int64(n) }})
 	ct := "application/octet-stream"
-	if _, err := dstClient.Upload(r.Context(), in.DstBucket, in.DstKey, pr, -1, ct); err != nil {
+	if _, err := dstClient.Upload(r.Context(), in.DstBucket, in.DstKey, tee, -1, ct); err != nil {
 		write(map[string]any{"error": err.Error()})
 		close(doneCh)
 		return
