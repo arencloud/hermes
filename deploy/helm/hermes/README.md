@@ -117,6 +117,11 @@ openshift:
   - NGINX Ingress: set `ingress.annotations`:
     - `nginx.ingress.kubernetes.io/proxy-body-size: "0"` (or a concrete size like `200m`)
     - `nginx.ingress.kubernetes.io/proxy-request-buffering: "off"`
+- Probes under load: if you observe pod restarts during long uploads, relax probe timings:
+  - Increase `livenessProbe.timeoutSeconds` (e.g., 5) and `livenessProbe.failureThreshold` (e.g., 6).
+  - Increase `readinessProbe.timeoutSeconds` and `readinessProbe.failureThreshold` similarly.
+  - Optionally enable a `startupProbe` to prevent early liveness checks during cold start or heavy IO.
+- Review resource limits: heavy uploads can be CPU-throttled if `resources.limits.cpu` is too low; consider raising CPU and memory limits/requests.
 - In the app, you can cap uploads with `upload.maxBodyBytes` (maps to env `MAX_UPLOAD_SIZE_BYTES`).
 - Hermes streams multipart file parts directly to S3 (no full in-memory buffering).
 

@@ -279,7 +279,7 @@ Notes are printed after install/upgrade via templates/NOTES.txt.
 - Static UI not loading: Confirm STATIC_DIR path and that web/dist exists. In container, it’s baked into /app/web/dist.
 - Postgres connection errors: Verify DATABASE_URL (or DB_DSN) and network reachability; set db.driver=postgres in Helm.
 - MinIO provider errors: Ensure MinIO is healthy (make wait-minio), correct endpoint/credentials, and useSSL flag.
-- Uploading large files on Kubernetes/OKD/OpenShift causes 413/crash: set NGINX ingress annotations `nginx.ingress.kubernetes.io/proxy-body-size: "0"` and `nginx.ingress.kubernetes.io/proxy-request-buffering: "off"`; for OpenShift Route, there’s no per-route body size limit by default, but ensure any third-party ingress in front allows large bodies. Optionally cap in-app via `MAX_UPLOAD_SIZE_BYTES` or Helm `upload.maxBodyBytes`.
+- Uploading large files on Kubernetes/OKD/OpenShift causes 413/restarts: set NGINX ingress annotations `nginx.ingress.kubernetes.io/proxy-body-size: "0"` and `nginx.ingress.kubernetes.io/proxy-request-buffering: "off"`. For OpenShift Route, there’s no per-route body size limit by default, but ensure any third-party ingress allows large bodies. If pods restart during long uploads, relax probe timings in Helm values: increase `livenessProbe.timeoutSeconds` and `failureThreshold`, and do the same for readiness; optionally enable `startupProbe`. Review CPU/memory limits to avoid throttling/OOM under sustained uploads. Optionally cap in-app via `MAX_UPLOAD_SIZE_BYTES` or Helm `upload.maxBodyBytes`.
 
 ## Contributing 🤝
 

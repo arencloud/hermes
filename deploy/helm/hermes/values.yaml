@@ -121,12 +121,25 @@ livenessProbe:
   path: /health
   initialDelaySeconds: 10
   periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
 
 readinessProbe:
   enabled: true
   path: /health
   initialDelaySeconds: 5
   periodSeconds: 5
+  timeoutSeconds: 5
+  failureThreshold: 6
+
+# Optional startup probe to avoid premature restarts during cold start or heavy load
+startupProbe:
+  enabled: false
+  path: /health
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 5
+  failureThreshold: 24
 
 # Annotations for pods
 podAnnotations: {}
